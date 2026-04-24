@@ -12,6 +12,7 @@ const titles: Record<string, string> = {
   '/batches': 'Batches',
   '/compliance': 'Compliance',
   '/analytics': 'Analytics',
+  '/settings': 'Settings',
   '/barrels/new': 'Log Barrel',
 }
 

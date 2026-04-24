@@ -28,6 +28,11 @@ export interface Barrel {
   predicted_peak_date: string | null
   profile_match_score: number | null
   batch_id: string | null
+  latitude: number | null
+  longitude: number | null
+  location_accuracy_m: number | null
+  location_captured_at: string | null
+  location_label: string | null
   notes: string | null
   created_at: string
   updated_at: string

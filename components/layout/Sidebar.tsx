@@ -14,6 +14,7 @@ const nav = [
   { href: '/batches', label: 'Batches', icon: '▣' },
   { href: '/compliance', label: 'Compliance', icon: '✓' },
   { href: '/analytics', label: 'Analytics', icon: '↗' },
+  { href: '/settings', label: 'Settings', icon: '⚙' },
 ]
 
 export function Sidebar({ distilleryName }: { distilleryName?: string }) {

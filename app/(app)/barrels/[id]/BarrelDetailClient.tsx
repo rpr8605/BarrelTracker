@@ -1,16 +1,20 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatusBadge, TagChip } from '@/components/ui/Badge'
 import { AgeBar } from '@/components/barrels/AgeBar'
+import { BarrelEditForm } from '@/components/barrels/BarrelEditForm'
+import { PhotoTimeline } from '@/components/barrels/PhotoTimeline'
+import { BarrelQRCode } from '@/components/barrels/QRCode'
 import { VoiceRecorder } from '@/components/voice/VoiceRecorder'
 import { NoteTimeline } from '@/components/voice/NoteTimeline'
 import { createClient } from '@/lib/supabase'
 import { formatDate, formatMonths } from '@/lib/utils'
 import { getBarrelAgeMonths, estimateAngelsShare } from '@/lib/tags'
 import { isNFCSupported, writeNFCTag } from '@/lib/nfc'
+import { GeoLocation } from '@/components/barrels/GeoLocation'
 import type { Barrel, VoiceNote } from '@/types/database'
 
 export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { barrel: Barrel; notes: VoiceNote[] }) {
@@ -18,8 +22,30 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
   const [notes, setNotes] = useState(initialNotes)
   const [editing, setEditing] = useState(false)
   const [showRecorder, setShowRecorder] = useState(false)
+  const [showQR, setShowQR] = useState(false)
   const [nfcWriting, setNfcWriting] = useState(false)
   const [nfcMsg, setNfcMsg] = useState('')
+
+  // Realtime subscription for voice notes
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`voice-notes-${barrel.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'voice_notes',
+        filter: `barrel_id=eq.${barrel.id}`,
+      }, (payload) => {
+        setNotes((n) => {
+          const exists = n.some((note) => note.id === payload.new.id)
+          return exists ? n : [payload.new as VoiceNote, ...n]
+        })
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [barrel.id])
 
   const ageMonths = getBarrelAgeMonths(barrel.entry_date)
   const angelsShare = estimateAngelsShare(ageMonths, barrel.warehouse_tier)
@@ -27,18 +53,21 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
   async function markReady() {
     const supabase = createClient()
     await supabase.from('barrels').update({ status: 'ready' }).eq('id', barrel.id)
-    setBarrel((b) => ({ ...b, status: 'ready' }))
+    setBarrel((b) => ({ ...b, status: 'ready' as const }))
   }
 
   async function onNoteComplete(noteId: string) {
     const supabase = createClient()
     const { data } = await supabase.from('voice_notes').select('*').eq('id', noteId).single()
-    if (data) setNotes((n) => [data as VoiceNote, ...n])
+    if (data) setNotes((n) => {
+      const exists = n.some((note) => note.id === data.id)
+      return exists ? n : [data as VoiceNote, ...n]
+    })
     setShowRecorder(false)
   }
 
   async function linkNFC() {
-    if (!isNFCSupported()) { setNfcMsg('NFC not supported on this device'); return }
+    if (!isNFCSupported()) { setNfcMsg('NFC not supported on this device — use the QR code instead'); return }
     setNfcWriting(true)
     setNfcMsg('')
     try {
@@ -69,71 +98,103 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h1 className="text-xl font-medium text-[var(--color-text)]">{barrel.barrel_number}</h1>
-                <StatusBadge status={barrel.status} />
+                <div className="mt-1"><StatusBadge status={barrel.status} /></div>
               </div>
               <Button variant="secondary" size="sm" onClick={() => setEditing(!editing)}>
-                {editing ? 'Done' : 'Edit'}
+                {editing ? 'Done editing' : 'Edit'}
               </Button>
             </div>
 
-            <div className="space-y-3">
-              <AgeBar entryDate={barrel.entry_date} predictedPeakDate={barrel.predicted_peak_date} />
+            {editing ? (
+              <BarrelEditForm
+                barrel={barrel}
+                onSave={(updated) => { setBarrel(updated); setEditing(false) }}
+              />
+            ) : (
+              <div className="space-y-3">
+                <AgeBar entryDate={barrel.entry_date} predictedPeakDate={barrel.predicted_peak_date} />
 
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                {[
-                  ['Age', formatMonths(ageMonths)],
-                  ['Entry date', formatDate(barrel.entry_date)],
-                  ['Mash bill', barrel.mash_bill],
-                  ['Source', barrel.distillery_source],
-                  ['Entry proof', barrel.entry_proof ? `${barrel.entry_proof}°` : null],
-                  ['Finish', barrel.finish_type || 'None'],
-                  ['Location', barrel.warehouse_row ? `Row ${barrel.warehouse_row} / Slot ${barrel.warehouse_slot} / Tier ${barrel.warehouse_tier}` : null],
-                  ['Angel\'s share', `~${angelsShare.toFixed(1)}%`],
-                ].map(([label, value]) => value ? (
-                  <div key={label as string}>
-                    <div className="text-xs text-[var(--color-text-muted)]">{label}</div>
-                    <div className="text-[var(--color-text)] mt-0.5">{value}</div>
-                  </div>
-                ) : null)}
-              </div>
-
-              {barrel.tags && barrel.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-2 border-t border-[var(--color-border)]">
-                  {barrel.tags.map((tag) => <TagChip key={tag} tag={tag} amber />)}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {([
+                    ['Age', formatMonths(ageMonths)],
+                    ['Entry date', formatDate(barrel.entry_date)],
+                    ['Mash bill', barrel.mash_bill],
+                    ['Source', barrel.distillery_source],
+                    ['Entry proof', barrel.entry_proof ? `${barrel.entry_proof}°` : null],
+                    ['Current proof', barrel.current_proof_estimate ? `${barrel.current_proof_estimate}°` : null],
+                    ['Finish', barrel.finish_type && barrel.finish_type !== 'none' ? barrel.finish_type : null],
+                    ['Location', barrel.warehouse_row ? `Row ${barrel.warehouse_row} · Slot ${barrel.warehouse_slot} · Tier ${barrel.warehouse_tier}` : null],
+                    ["Angel's share", `~${angelsShare.toFixed(1)}%`],
+                    ['Notes', barrel.notes],
+                  ] as [string, string | null][]).map(([label, value]) => value ? (
+                    <div key={label} className={label === 'Notes' ? 'col-span-2' : ''}>
+                      <div className="text-xs text-[var(--color-text-muted)]">{label}</div>
+                      <div className="text-[var(--color-text)] mt-0.5 text-sm">{value}</div>
+                    </div>
+                  ) : null)}
                 </div>
-              )}
-            </div>
+
+                {barrel.tags && barrel.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-2 border-t border-[var(--color-border)]">
+                    {barrel.tags.map((tag) => <TagChip key={tag} tag={tag} amber />)}
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
 
+          {/* Quick actions */}
           <Card>
             <h3 className="text-sm font-medium mb-3">Quick actions</h3>
             <div className="grid grid-cols-2 gap-2">
               {barrel.status !== 'ready' && (
                 <Button variant="secondary" size="sm" onClick={markReady}>Mark ready</Button>
               )}
-              <Link href={`/blend?barrel=${barrel.id}`}>
+              <Link href={`/blend?barrel=${barrel.id}`} className="block">
                 <Button variant="secondary" size="sm" className="w-full">Add to blend</Button>
-              </Link>
-              <Link href={`/barrels/${barrel.id}/story`}>
-                <Button variant="secondary" size="sm" className="w-full">Generate story</Button>
               </Link>
               <Button variant="secondary" size="sm" onClick={linkNFC} loading={nfcWriting}>
                 {barrel.nfc_tag_id ? 'NFC linked ◈' : 'Link NFC tag'}
               </Button>
+              <Button variant="secondary" size="sm" onClick={() => setShowQR(!showQR)}>
+                {showQR ? 'Hide QR' : 'Show QR code'}
+              </Button>
             </div>
             {nfcMsg && <p className="text-xs mt-2 text-center text-[var(--color-text-muted)]">{nfcMsg}</p>}
+
+            {showQR && (
+              <div className="mt-3 pt-3 border-t border-[var(--color-border)] flex justify-center">
+                <BarrelQRCode barrelId={barrel.id} barrelNumber={barrel.barrel_number} />
+              </div>
+            )}
           </Card>
 
-          {barrel.photos && barrel.photos.length > 0 && (
-            <Card>
-              <h3 className="text-sm font-medium mb-3">Photo timeline</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {barrel.photos.map((url, i) => (
-                  <img key={i} src={url} alt={`Barrel photo ${i + 1}`} className="w-full aspect-square object-cover rounded-lg" />
-                ))}
-              </div>
-            </Card>
-          )}
+          {/* Geolocation */}
+          <Card>
+            <h3 className="text-sm font-medium mb-3">Location</h3>
+            <GeoLocation
+              barrelId={barrel.id}
+              latitude={barrel.latitude}
+              longitude={barrel.longitude}
+              accuracy={barrel.location_accuracy_m}
+              capturedAt={barrel.location_captured_at}
+              label={barrel.location_label}
+              onUpdate={(data) => setBarrel((b) => ({
+                ...b,
+                latitude: data.latitude,
+                longitude: data.longitude,
+                location_accuracy_m: data.accuracy,
+                location_captured_at: new Date().toISOString(),
+                location_label: data.label,
+              }))}
+            />
+          </Card>
+
+          {/* Photo timeline */}
+          <Card>
+            <h3 className="text-sm font-medium mb-3">Photos</h3>
+            <PhotoTimeline barrelId={barrel.id} photos={barrel.photos || []} />
+          </Card>
         </div>
 
         {/* Right column */}
@@ -156,14 +217,14 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
           <Card>
             <h3 className="text-sm font-medium mb-2">AI tasting prediction</h3>
             {notes.length === 0 ? (
-              <p className="text-sm text-[var(--color-text-muted)]">Record voice notes to unlock AI flavor predictions</p>
+              <p className="text-sm text-[var(--color-text-muted)]">Record voice notes to unlock AI flavor predictions for this barrel.</p>
             ) : (
               <div className="space-y-2">
                 <p className="text-sm text-[var(--color-text-secondary)]">
                   Based on {notes.length} note{notes.length !== 1 ? 's' : ''}, this barrel shows strong potential.
                   {barrel.predicted_peak_date && ` Predicted peak: ${formatDate(barrel.predicted_peak_date)}.`}
                 </p>
-                {barrel.profile_match_score != null && (
+                {(barrel.profile_match_score ?? 0) > 0 && (
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-2 rounded-full bg-[var(--color-border)] overflow-hidden">
                       <div className="h-full bg-primary rounded-full" style={{ width: `${barrel.profile_match_score}%` }} />
