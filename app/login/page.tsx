@@ -5,40 +5,45 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useRouter } from 'next/navigation'
 
-type Mode = 'signin' | 'signup'
-
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
-  const [mode, setMode] = useState<Mode>('signin')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
 
-  async function submit() {
-    if (!email || !password) return
+  async function signIn() {
+    if (!username.trim() || !password) return
     setLoading(true)
     setError('')
-    const supabase = createClient()
 
-    if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { full_name: name } },
+    try {
+      // Resolve username → email (hidden from user)
+      const res = await fetch('/api/auth/resolve-username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim() }),
       })
-      if (error) { setError(error.message); setLoading(false); return }
-      // Auto sign in after signup
-      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
-      if (signInErr) { setError(signInErr.message); setLoading(false); return }
-      router.push('/onboarding')
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) { setError(error.message); setLoading(false); return }
+      const { email, error: lookupErr } = await res.json()
+      if (lookupErr || !email) {
+        setError('Username not found')
+        setLoading(false)
+        return
+      }
+
+      const supabase = createClient()
+      const { error: authErr } = await supabase.auth.signInWithPassword({ email, password })
+      if (authErr) {
+        setError('Incorrect password')
+        setLoading(false)
+        return
+      }
+
       router.push('/dashboard')
+    } catch {
+      setError('Something went wrong — try again')
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -50,40 +55,16 @@ export default function LoginPage() {
         </div>
 
         <div className="card p-6 space-y-4">
-          {/* Tab switcher */}
-          <div className="flex rounded-lg overflow-hidden border border-[var(--color-border)]">
-            {(['signin', 'signup'] as Mode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setError('') }}
-                className={`flex-1 py-2 text-sm font-medium transition-all min-h-[40px] ${
-                  mode === m
-                    ? 'bg-primary text-white'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-                }`}
-              >
-                {m === 'signin' ? 'Sign in' : 'Create account'}
-              </button>
-            ))}
-          </div>
-
-          {mode === 'signup' && (
-            <Input
-              label="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="William"
-              autoComplete="name"
-            />
-          )}
-
           <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            autoComplete="email"
+            label="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="e.g. WFRANCIS"
+            autoComplete="username"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            onKeyDown={(e) => e.key === 'Enter' && signIn()}
           />
 
           <Input
@@ -92,27 +73,25 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            autoComplete="current-password"
+            onKeyDown={(e) => e.key === 'Enter' && signIn()}
           />
 
           {error && <p className="text-sm text-danger">{error}</p>}
 
           <Button
-            onClick={submit}
+            onClick={signIn}
             loading={loading}
-            disabled={!email || !password}
+            disabled={!username.trim() || !password}
             className="w-full"
             size="lg"
           >
-            {mode === 'signin' ? 'Sign in' : 'Create account'}
+            Sign in
           </Button>
 
-          {mode === 'signup' && (
-            <p className="text-xs text-center text-[var(--color-text-muted)]">
-              Each person gets their own login. Shared distillery data, individual accounts.
-            </p>
-          )}
+          <p className="text-xs text-center text-[var(--color-text-muted)]">
+            Contact your administrator if you need access.
+          </p>
         </div>
       </div>
     </div>
