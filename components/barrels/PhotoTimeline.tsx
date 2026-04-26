@@ -2,6 +2,8 @@
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 
+const MAX_PHOTOS = 3
+
 export function PhotoTimeline({ barrelId, photos: initialPhotos }: { barrelId: string; photos: string[] }) {
   const [photos, setPhotos] = useState(initialPhotos)
   const [uploading, setUploading] = useState(false)
@@ -46,15 +48,20 @@ export function PhotoTimeline({ barrelId, photos: initialPhotos }: { barrelId: s
         onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f) }}
       />
 
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() => inputRef.current?.click()}
-        loading={uploading}
-        className="w-full"
-      >
-        {photos.length === 0 ? 'Add first photo' : '+ Add photo'}
-      </Button>
+      {photos.length < MAX_PHOTOS && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => inputRef.current?.click()}
+          loading={uploading}
+          className="w-full"
+        >
+          {photos.length === 0 ? 'Add photo' : `+ Add photo (${photos.length}/${MAX_PHOTOS})`}
+        </Button>
+      )}
+      {photos.length >= MAX_PHOTOS && (
+        <p className="text-xs text-center text-[var(--color-text-muted)]">Max {MAX_PHOTOS} photos per barrel</p>
+      )}
 
       {error && <p className="text-xs text-danger">{error}</p>}
     </div>

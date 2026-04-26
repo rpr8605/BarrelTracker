@@ -7,6 +7,7 @@ import { StatusBadge, TagChip } from '@/components/ui/Badge'
 import { AgeBar } from '@/components/barrels/AgeBar'
 import { BarrelEditForm } from '@/components/barrels/BarrelEditForm'
 import { PhotoTimeline } from '@/components/barrels/PhotoTimeline'
+import { LabelScanner } from '@/components/barrels/LabelScanner'
 import { BarrelQRCode } from '@/components/barrels/QRCode'
 import { VoiceRecorder } from '@/components/voice/VoiceRecorder'
 import { NoteTimeline } from '@/components/voice/NoteTimeline'
@@ -15,16 +16,20 @@ import { formatDate, formatMonths } from '@/lib/utils'
 import { getBarrelAgeMonths, estimateAngelsShare } from '@/lib/tags'
 import { isNFCSupported, writeNFCTag } from '@/lib/nfc'
 import { GeoLocation } from '@/components/barrels/GeoLocation'
+import { useCanWrite } from '@/lib/role-context'
 import type { Barrel, VoiceNote } from '@/types/database'
+import type { ExtractedLabel } from '@/components/barrels/LabelScanner'
 
 export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { barrel: Barrel; notes: VoiceNote[] }) {
   const [barrel, setBarrel] = useState(initial)
   const [notes, setNotes] = useState(initialNotes)
   const [editing, setEditing] = useState(false)
   const [showRecorder, setShowRecorder] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
   const [showQR, setShowQR] = useState(false)
   const [nfcWriting, setNfcWriting] = useState(false)
   const [nfcMsg, setNfcMsg] = useState('')
+  const canWrite = useCanWrite()
 
   // Realtime subscription for voice notes
   useEffect(() => {
@@ -66,6 +71,20 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
     setShowRecorder(false)
   }
 
+  async function applyLabel(data: ExtractedLabel) {
+    const supabase = createClient()
+    const updates: Partial<Barrel> = {}
+    if (data.barrel_number) updates.barrel_number = data.barrel_number
+    if (data.mash_bill) updates.mash_bill = data.mash_bill
+    if (data.distillery_source) updates.distillery_source = data.distillery_source
+    if (data.entry_date) updates.entry_date = data.entry_date
+    if (data.entry_proof) updates.entry_proof = Number(data.entry_proof)
+    if (data.notes) updates.notes = data.notes
+    await supabase.from('barrels').update(updates).eq('id', barrel.id)
+    setBarrel((b) => ({ ...b, ...updates }))
+    setShowScanner(false)
+  }
+
   async function linkNFC() {
     if (!isNFCSupported()) { setNfcMsg('NFC not supported on this device — use the QR code instead'); return }
     setNfcWriting(true)
@@ -100,9 +119,11 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
                 <h1 className="text-xl font-medium text-[var(--color-text)]">{barrel.barrel_number}</h1>
                 <div className="mt-1"><StatusBadge status={barrel.status} /></div>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => setEditing(!editing)}>
-                {editing ? 'Done editing' : 'Edit'}
-              </Button>
+              {canWrite && (
+                <Button variant="secondary" size="sm" onClick={() => setEditing(!editing)}>
+                  {editing ? 'Done editing' : 'Edit'}
+                </Button>
+              )}
             </div>
 
             {editing ? (
@@ -147,20 +168,35 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
           <Card>
             <h3 className="text-sm font-medium mb-3">Quick actions</h3>
             <div className="grid grid-cols-2 gap-2">
-              {barrel.status !== 'ready' && (
+              {canWrite && barrel.status !== 'ready' && (
                 <Button variant="secondary" size="sm" onClick={markReady}>Mark ready</Button>
               )}
-              <Link href={`/blend?barrel=${barrel.id}`} className="block">
-                <Button variant="secondary" size="sm" className="w-full">Add to blend</Button>
-              </Link>
-              <Button variant="secondary" size="sm" onClick={linkNFC} loading={nfcWriting}>
-                {barrel.nfc_tag_id ? 'NFC linked ◈' : 'Link NFC tag'}
-              </Button>
+              {canWrite && (
+                <Link href={`/blend?barrel=${barrel.id}`} className="block">
+                  <Button variant="secondary" size="sm" className="w-full">Add to blend</Button>
+                </Link>
+              )}
+              {canWrite && (
+                <Button variant="secondary" size="sm" onClick={linkNFC} loading={nfcWriting}>
+                  {barrel.nfc_tag_id ? 'NFC linked ◈' : 'Link NFC tag'}
+                </Button>
+              )}
               <Button variant="secondary" size="sm" onClick={() => setShowQR(!showQR)}>
                 {showQR ? 'Hide QR' : 'Show QR code'}
               </Button>
+              {canWrite && (
+                <Button variant="secondary" size="sm" onClick={() => setShowScanner(!showScanner)} className="col-span-2">
+                  {showScanner ? 'Cancel scan' : 'Scan barrel label'}
+                </Button>
+              )}
             </div>
             {nfcMsg && <p className="text-xs mt-2 text-center text-[var(--color-text-muted)]">{nfcMsg}</p>}
+
+            {showScanner && (
+              <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
+                <LabelScanner onExtracted={applyLabel} />
+              </div>
+            )}
 
             {showQR && (
               <div className="mt-3 pt-3 border-t border-[var(--color-border)] flex justify-center">
@@ -202,9 +238,11 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
           <Card>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium">Voice notes</h3>
-              <Button size="sm" variant="secondary" onClick={() => setShowRecorder(!showRecorder)}>
-                {showRecorder ? 'Cancel' : '+ Add note'}
-              </Button>
+              {canWrite && (
+                <Button size="sm" variant="secondary" onClick={() => setShowRecorder(!showRecorder)}>
+                  {showRecorder ? 'Cancel' : '+ Add note'}
+                </Button>
+              )}
             </div>
             {showRecorder && (
               <div className="mb-4 pb-4 border-b border-[var(--color-border)]">

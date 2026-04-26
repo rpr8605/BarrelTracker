@@ -5,7 +5,9 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { TagChip } from '@/components/ui/Badge'
+import { LabelScanner } from '@/components/barrels/LabelScanner'
 import { createClient } from '@/lib/supabase'
+import type { ExtractedLabel } from '@/components/barrels/LabelScanner'
 
 const GRAIN_OPTIONS = ['Wheat', 'High Wheat', 'Corn', 'High Corn', 'Rye', 'High Rye', 'Malted Rye', 'Barley', 'Four Grain', 'Heirloom Corn']
 const FINISH_OPTIONS = ['None', 'Port Finish', 'Sherry Finish', 'Rum Finish', 'Wine Finish', 'Double Oaked', 'Toasted Finish']
@@ -39,18 +41,37 @@ export default function NewBarrelPage() {
     set('grain_type', form.grain_type.includes(g) ? form.grain_type.filter((x) => x !== g) : [...form.grain_type, g])
   }
 
+  function applyLabel(data: ExtractedLabel) {
+    if (data.barrel_number) set('barrel_number', data.barrel_number)
+    if (data.mash_bill) set('mash_bill', data.mash_bill)
+    if (data.distillery_source) set('distillery_source', data.distillery_source)
+    if (data.entry_date) set('entry_date', data.entry_date)
+    if (data.entry_proof) set('entry_proof', String(data.entry_proof))
+    if (data.notes) set('notes', data.notes)
+  }
+
+  async function getDistilleryId(supabase: ReturnType<typeof createClient>, userId: string) {
+    // Try owner first
+    const { data: owned } = await supabase.from('distilleries').select('id').eq('owner_id', userId).limit(1).single()
+    if (owned) return owned.id
+    // Try member role
+    const { data: role } = await supabase.from('user_roles').select('distillery_id').eq('user_id', userId).limit(1).single()
+    return role?.distillery_id ?? null
+  }
+
   async function save() {
     setSaving(true)
     setError('')
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      const { data: distillery } = await supabase.from('distilleries').select('id').eq('owner_id', user!.id).limit(1).single()
+      const distilleryId = await getDistilleryId(supabase, user!.id)
+      const distillery = distilleryId ? { id: distilleryId } : null
 
       if (!distillery) { setError('Set up a distillery first'); setSaving(false); return }
 
       const { data: barrel, error: err } = await supabase.from('barrels').insert({
-        distillery_id: distillery.id,
+        distillery_id: distillery!.id,
         barrel_number: form.barrel_number,
         entry_date: form.entry_date || null,
         mash_bill: form.mash_bill || null,
@@ -105,6 +126,10 @@ export default function NewBarrelPage() {
         {step === 1 && (
           <div className="space-y-4">
             <h2 className="font-medium">Barrel info</h2>
+            <div className="rounded-lg border border-dashed border-[var(--color-border)] p-3">
+              <p className="text-xs text-[var(--color-text-muted)] mb-2">Snap a photo of the barrel label to auto-fill</p>
+              <LabelScanner onExtracted={applyLabel} />
+            </div>
             <Input label="Barrel number *" value={form.barrel_number} onChange={(e) => set('barrel_number', e.target.value)} placeholder="e.g. CR-041" />
             <Input label="Fill date" type="date" value={form.entry_date} onChange={(e) => set('entry_date', e.target.value)} />
             <Input label="Mash bill" value={form.mash_bill} onChange={(e) => set('mash_bill', e.target.value)} placeholder="e.g. 75% corn, 21% rye, 4% malt" />
