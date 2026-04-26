@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { createClient } from '@/lib/supabase'
+import { getMyDistilleryId } from '@/lib/distillery'
 import { formatDate } from '@/lib/utils'
 import type { TtbReport } from '@/types/database'
 
@@ -26,10 +27,10 @@ export default function CompliancePage() {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      supabase.from('distilleries').select('id').eq('owner_id', user.id).limit(1).single().then(({ data }) => {
-        if (data) {
-          setDistilleryId(data.id)
-          supabase.from('ttb_reports').select('*').eq('distillery_id', data.id).order('report_month', { ascending: false }).then(({ data: r }) => {
+      getMyDistilleryId(supabase, user.id).then((id) => {
+        if (id) {
+          setDistilleryId(id)
+          supabase.from('ttb_reports').select('*').eq('distillery_id', id).order('report_month', { ascending: false }).then(({ data: r }) => {
             setReports((r || []) as TtbReport[])
           })
         }

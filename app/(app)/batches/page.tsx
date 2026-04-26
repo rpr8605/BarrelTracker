@@ -1,4 +1,5 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, getActiveDistilleryId } from '@/lib/supabase-server'
+import { getMyDistilleryId } from '@/lib/distillery'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { formatDate, formatCurrency } from '@/lib/utils'
@@ -9,13 +10,12 @@ export default async function BatchesPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: distilleries } = await supabase.from('distilleries').select('id').eq('owner_id', user!.id)
-  const ids = (distilleries || []).map((d) => d.id)
+  const distilleryId = await getMyDistilleryId(supabase, user!.id, getActiveDistilleryId())
 
   const { data: batches } = await supabase
     .from('batches')
     .select('*')
-    .in('distillery_id', ids.length ? ids : ['none'])
+    .eq('distillery_id', distilleryId ?? 'none')
     .order('created_at', { ascending: false })
 
   const all = (batches || []) as Batch[]

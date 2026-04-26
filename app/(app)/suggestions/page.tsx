@@ -1,4 +1,5 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, getActiveDistilleryId } from '@/lib/supabase-server'
+import { getMyDistilleryId } from '@/lib/distillery'
 import { Card } from '@/components/ui/Card'
 import { BarrelCard } from '@/components/barrels/BarrelCard'
 import { getBarrelAgeMonths } from '@/lib/tags'
@@ -10,13 +11,12 @@ export default async function SuggestionsPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: distilleries } = await supabase.from('distilleries').select('id').eq('owner_id', user!.id)
-  const ids = (distilleries || []).map((d) => d.id)
+  const distilleryId = await getMyDistilleryId(supabase, user!.id, getActiveDistilleryId())
 
   const { data: barrels } = await supabase
     .from('barrels')
     .select('*')
-    .in('distillery_id', ids.length ? ids : ['none'])
+    .eq('distillery_id', distilleryId ?? 'none')
     .in('status', ['aging', 'ready'])
     .order('profile_match_score', { ascending: false })
 

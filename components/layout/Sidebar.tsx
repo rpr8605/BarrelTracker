@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { DistillerySwitcher } from './DistillerySwitcher'
 
 const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: '⌂' },
@@ -17,7 +18,17 @@ const nav = [
   { href: '/settings', label: 'Settings', icon: '⚙' },
 ]
 
-export function Sidebar({ distilleryName }: { distilleryName?: string }) {
+interface Distillery { id: string; name: string }
+
+export function Sidebar({
+  distilleryName,
+  allDistilleries = [],
+  activeDistilleryId,
+}: {
+  distilleryName?: string
+  allDistilleries?: Distillery[]
+  activeDistilleryId?: string
+}) {
   const path = usePathname()
 
   return (
@@ -26,6 +37,9 @@ export function Sidebar({ distilleryName }: { distilleryName?: string }) {
         <div className="text-xl font-medium text-primary">Still</div>
         {distilleryName && (
           <div className="text-xs text-[var(--color-text-muted)] mt-0.5 truncate">{distilleryName}</div>
+        )}
+        {allDistilleries.length > 1 && activeDistilleryId && (
+          <DistillerySwitcher distilleries={allDistilleries} activeId={activeDistilleryId} />
         )}
       </div>
 

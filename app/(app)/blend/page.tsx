@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { BlendCard } from '@/components/ai/BlendCard'
 import { createClient } from '@/lib/supabase'
+import { getMyDistilleryId } from '@/lib/distillery'
 import type { Barrel } from '@/types/database'
 import type { BlendRecommendation } from '@/types/api'
 
@@ -45,10 +46,10 @@ export default function BlendPage() {
     setApproving(blend.name)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: dist } = await supabase.from('distilleries').select('id').eq('owner_id', user!.id).limit(1).single()
+    const distId = await getMyDistilleryId(supabase, user!.id)
 
     await supabase.from('batches').insert({
-      distillery_id: dist?.id,
+      distillery_id: distId,
       batch_number: `BATCH-${Date.now()}`,
       barrel_ids: blend.barrel_ids,
       blend_ratios: blend.blend_ratios,

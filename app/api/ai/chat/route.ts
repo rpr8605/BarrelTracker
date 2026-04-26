@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, getActiveDistilleryId } from '@/lib/supabase-server'
 import { chatResponse } from '@/lib/anthropic'
 import { buildInventorySummary } from '@/lib/taste-profile'
+import { getMyDistilleryId } from '@/lib/distillery'
 
 export async function POST(req: NextRequest) {
   const supabase = createServerSupabaseClient()
@@ -10,10 +11,12 @@ export async function POST(req: NextRequest) {
 
   const { messages } = await req.json()
 
+  const distilleryId = await getMyDistilleryId(supabase, user!.id, getActiveDistilleryId())
+
   const [barrelRes, profileRes, distRes] = await Promise.all([
-    supabase.from('barrels').select('id,barrel_number,mash_bill,status,tags,profile_match_score,entry_date').limit(50),
+    supabase.from('barrels').select('id,barrel_number,mash_bill,status,tags,profile_match_score,entry_date').eq('distillery_id', distilleryId ?? 'none').limit(50),
     supabase.from('taste_profile').select('*').eq('user_id', user.id).single(),
-    supabase.from('distilleries').select('name').eq('owner_id', user.id).limit(1).single(),
+    distilleryId ? supabase.from('distilleries').select('name').eq('id', distilleryId).single() : Promise.resolve({ data: null }),
   ])
 
   const barrels = (barrelRes.data || []) as Record<string, unknown>[]

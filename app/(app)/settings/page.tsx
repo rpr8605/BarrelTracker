@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase'
+import { getMyDistilleryId } from '@/lib/distillery'
 import type { Distillery } from '@/types/database'
 
 export default function SettingsPage() {
@@ -20,12 +21,15 @@ export default function SettingsPage() {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      supabase.from('distilleries').select('*').eq('owner_id', user.id).limit(1).single().then(({ data }) => {
-        if (data) {
-          setDistillery(data as Distillery)
-          setName(data.name)
-          setLocation(data.location || '')
-        }
+      getMyDistilleryId(supabase, user.id).then((id) => {
+        if (!id) return
+        supabase.from('distilleries').select('*').eq('id', id).single().then(({ data }) => {
+          if (data) {
+            setDistillery(data as Distillery)
+            setName(data.name)
+            setLocation(data.location || '')
+          }
+        })
       })
     })
   }, [])

@@ -1,49 +1,50 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
-import type { Distillery } from '@/types/database'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
-interface DistillerySwitcherProps {
-  activeId: string | null
-  onSwitch: (id: string) => void
-}
+interface Distillery { id: string; name: string }
 
-export function DistillerySwitcher({ activeId, onSwitch }: DistillerySwitcherProps) {
-  const [distilleries, setDistilleries] = useState<Distillery[]>([])
+export function DistillerySwitcher({ distilleries, activeId }: { distilleries: Distillery[]; activeId: string }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      supabase.from('distilleries').select('*').eq('owner_id', user.id).then(({ data }) => {
-        setDistilleries((data || []) as Distillery[])
-      })
-    })
-  }, [])
+  const [switching, setSwitching] = useState(false)
 
   if (distilleries.length <= 1) return null
 
   const active = distilleries.find((d) => d.id === activeId) || distilleries[0]
 
+  async function switchTo(id: string) {
+    if (id === activeId) { setOpen(false); return }
+    setSwitching(true)
+    setOpen(false)
+    await fetch('/api/distillery/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ distilleryId: id }),
+    })
+    router.refresh()
+    setSwitching(false)
+  }
+
   return (
-    <div className="relative">
+    <div className="relative mt-1">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors min-h-[36px] w-full"
+        disabled={switching}
+        className="flex items-center gap-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors w-full min-h-[28px] disabled:opacity-60"
       >
-        <span className="truncate">{active?.name}</span>
-        <span className="text-xs opacity-60">▾</span>
+        <span className="truncate">{switching ? 'Switching...' : active?.name}</span>
+        <span className="opacity-50 ml-auto">▾</span>
       </button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 w-48 card shadow-lg z-20 overflow-hidden">
+          <div className="absolute top-full left-0 mt-1 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg z-20 overflow-hidden">
             {distilleries.map((d) => (
               <button
                 key={d.id}
-                onClick={() => { onSwitch(d.id); setOpen(false) }}
+                onClick={() => switchTo(d.id)}
                 className={`w-full text-left px-3 py-2.5 text-sm transition-colors min-h-[44px] ${
                   d.id === activeId
                     ? 'bg-primary/10 text-primary font-medium'
@@ -51,6 +52,7 @@ export function DistillerySwitcher({ activeId, onSwitch }: DistillerySwitcherPro
                 }`}
               >
                 {d.name}
+                {d.id === activeId && <span className="ml-1 text-xs">✓</span>}
               </button>
             ))}
           </div>

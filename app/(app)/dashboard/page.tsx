@@ -1,4 +1,5 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, getActiveDistilleryId } from '@/lib/supabase-server'
+import { getMyDistilleryId } from '@/lib/distillery'
 import { Card } from '@/components/ui/Card'
 import { BarrelCard, BarrelCardSkeleton } from '@/components/barrels/BarrelCard'
 import { SuggestionStrip } from '@/components/ai/SuggestionStrip'
@@ -12,17 +13,12 @@ export default async function DashboardPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: distilleries } = await supabase
-    .from('distilleries')
-    .select('id')
-    .eq('owner_id', user!.id)
-
-  const distilleryIds = (distilleries || []).map((d) => d.id)
+  const distilleryId = await getMyDistilleryId(supabase, user!.id, getActiveDistilleryId())
 
   const { data: barrels } = await supabase
     .from('barrels')
     .select('*')
-    .in('distillery_id', distilleryIds.length ? distilleryIds : ['none'])
+    .eq('distillery_id', distilleryId ?? 'none')
     .order('created_at', { ascending: false })
 
   const allBarrels = (barrels || []) as Barrel[]

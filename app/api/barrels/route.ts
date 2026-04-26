@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, getActiveDistilleryId } from '@/lib/supabase-server'
+import { getMyDistilleryId } from '@/lib/distillery'
 
 export async function GET(req: NextRequest) {
   const supabase = createServerSupabaseClient()
@@ -8,14 +9,11 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
-  const distilleryId = searchParams.get('distillery_id')
 
-  const { data: distilleries } = await supabase.from('distilleries').select('id').eq('owner_id', user.id)
-  const ids = (distilleries || []).map((d) => d.id)
+  const distilleryId = await getMyDistilleryId(supabase, user!.id, getActiveDistilleryId())
 
-  let q = supabase.from('barrels').select('*').in('distillery_id', ids.length ? ids : ['none'])
+  let q = supabase.from('barrels').select('*').eq('distillery_id', distilleryId ?? 'none')
   if (status) q = q.eq('status', status)
-  if (distilleryId) q = q.eq('distillery_id', distilleryId)
 
   const { data, error } = await q.order('created_at', { ascending: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

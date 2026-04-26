@@ -1,4 +1,5 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, getActiveDistilleryId } from '@/lib/supabase-server'
+import { getMyDistilleryId } from '@/lib/distillery'
 import { HeatMap } from '@/components/warehouse/HeatMap'
 import type { Barrel } from '@/types/database'
 
@@ -6,17 +7,12 @@ export default async function WarehousePage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: distilleries } = await supabase
-    .from('distilleries')
-    .select('id, name')
-    .eq('owner_id', user!.id)
-
-  const ids = (distilleries || []).map((d) => d.id)
+  const distilleryId = await getMyDistilleryId(supabase, user!.id, getActiveDistilleryId())
 
   const { data: barrels } = await supabase
     .from('barrels')
     .select('*')
-    .in('distillery_id', ids.length ? ids : ['none'])
+    .eq('distillery_id', distilleryId ?? 'none')
     .not('warehouse_row', 'is', null)
 
   const allBarrels = (barrels || []) as Barrel[]

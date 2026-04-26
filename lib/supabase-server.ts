@@ -1,6 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+export function getActiveDistilleryId(): string | undefined {
+  return cookies().get('active_distillery')?.value
+}
+
 export function createServerSupabaseClient() {
   const cookieStore = cookies()
   return createServerClient(
