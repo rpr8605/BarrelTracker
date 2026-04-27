@@ -78,7 +78,13 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/demo-login', { method: 'POST' })
       const data = await res.json()
       if (!data.ok) { setError(data.error || 'Demo unavailable'); setLoading(false); return }
+
+      // Establish session in the browser client so server components can read it
+      const supabase = createClient()
+      await supabase.auth.setSession({ access_token: data.accessToken, refresh_token: data.refreshToken })
+
       localStorage.setItem('still_display_name', displayName.trim())
+      await setActiveDistillery(env.id)
       router.push('/dashboard')
     } catch {
       setError('Could not reach demo — try again')

@@ -1,22 +1,30 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-// Shared demo account — anyone who picks the Demo environment signs in as this user.
-// The display name they type is stored client-side (localStorage) only.
 const DEMO_EMAIL = 'demo-system@stilldemo.com'
 const DEMO_PASSWORD = 'DemoSystem2024!'
 
-export async function POST() {
-  const supabase = createServerSupabaseClient()
+const admin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+)
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+export async function POST() {
+  // Sign in via admin to get session tokens, then return them to the client
+  // so the browser-side Supabase can establish the session (same pattern as WebAuthn).
+  const { data, error } = await admin.auth.signInWithPassword({
     email: DEMO_EMAIL,
     password: DEMO_PASSWORD,
   })
 
-  if (error) {
+  if (error || !data.session) {
     return NextResponse.json({ error: 'Demo unavailable — try again' }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true, userId: data.user?.id })
+  return NextResponse.json({
+    ok: true,
+    accessToken: data.session.access_token,
+    refreshToken: data.session.refresh_token,
+  })
 }
