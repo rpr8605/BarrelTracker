@@ -47,7 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
-  if (accessible.length === 0) redirect('/login')
+  if (accessible.length === 0) redirect('/onboarding')
 
   // Determine active distillery from cookie or default to first
   const cookieStore = cookies()
