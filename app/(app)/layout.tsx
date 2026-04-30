@@ -3,7 +3,7 @@ import { BottomNav } from '@/components/layout/BottomNav'
 import { Header } from '@/components/layout/Header'
 import { ChatPanel } from '@/components/ai/ChatPanel'
 import { RoleProvider } from '@/lib/role-context'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { UserRole } from '@/lib/role-context'
@@ -20,17 +20,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect('/login')
 
-  // Collect all distilleries this user can access
+  // Use service client for distillery lookups — the anon key doesn't reliably
+  // carry session context to PostgREST in Server Components, causing RLS to
+  // return empty rows even for authenticated users.
+  const admin = createServiceClient()
   const accessible: AccessibleDistillery[] = []
 
-  // Owned distilleries (full access unless overridden)
-  const { data: owned } = await supabase.from('distilleries').select('id, name').eq('owner_id', user.id)
+  // Owned distilleries
+  const { data: owned } = await admin.from('distilleries').select('id, name').eq('owner_id', user.id)
   for (const d of owned || []) {
     accessible.push({ id: d.id, name: d.name, role: 'owner' })
   }
 
-  // Role-based memberships (these override owner defaults)
-  const { data: roles } = await supabase
+  // Role-based memberships
+  const { data: roles } = await admin
     .from('user_roles')
     .select('role, distillery_id, distilleries(id, name)')
     .eq('user_id', user.id)
@@ -40,7 +43,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (!dist) continue
     const existing = accessible.findIndex((a) => a.id === dist.id)
     if (existing >= 0) {
-      // Override the default owner role with the explicit role
       accessible[existing].role = r.role as UserRole
     } else {
       accessible.push({ id: dist.id, name: dist.name, role: r.role as UserRole })
