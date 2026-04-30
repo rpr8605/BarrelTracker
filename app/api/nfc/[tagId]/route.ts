@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServiceClient } from '@/lib/supabase-server'
 
 export async function GET(_: NextRequest, { params }: { params: { tagId: string } }) {
-  const supabase = createServerSupabaseClient()
-  const { data: barrel } = await supabase
+  const admin = createServiceClient()
+  const { data: barrel } = await admin
     .from('barrels')
     .select('id')
     .eq('nfc_tag_id', params.tagId)

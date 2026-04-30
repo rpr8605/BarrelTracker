@@ -1,11 +1,12 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { Card } from '@/components/ui/Card'
 
 export default async function ProfilePage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const admin = createServiceClient()
 
-  const { data: profile } = await supabase
+  const { data: profile } = await admin
     .from('taste_profile')
     .select('*')
     .eq('user_id', user!.id)

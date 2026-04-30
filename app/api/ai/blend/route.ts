@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { generateBlendRecommendations } from '@/lib/anthropic'
 
 export async function POST(req: NextRequest) {
@@ -8,10 +8,11 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { barrel_ids } = await req.json()
+  const admin = createServiceClient()
 
   const [barrelRes, profileRes] = await Promise.all([
-    supabase.from('barrels').select('*').in('id', barrel_ids || []).limit(20),
-    supabase.from('taste_profile').select('*').eq('user_id', user.id).single(),
+    admin.from('barrels').select('*').in('id', barrel_ids || []).limit(20),
+    admin.from('taste_profile').select('*').eq('user_id', user.id).single(),
   ])
 
   const barrels = barrelRes.data || []

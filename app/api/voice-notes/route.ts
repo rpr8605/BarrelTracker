@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { uploadToR2, generateVoiceNoteKey } from '@/lib/r2'
 import { extractTagsFromText } from '@/lib/anthropic'
 
@@ -7,6 +7,7 @@ export async function POST(req: NextRequest) {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const admin = createServiceClient()
 
   const formData = await req.formData()
   const audio = formData.get('audio') as File | null
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
   const transcript = 'Voice note recorded. AI analysis pending.'
 
   // Get tag library for extraction
-  const { data: tags } = await supabase.from('tag_library').select('tag').order('usage_count', { ascending: false }).limit(100)
+  const { data: tags } = await admin.from('tag_library').select('tag').order('usage_count', { ascending: false }).limit(100)
   const tagList = (tags || []).map((t: { tag: string }) => t.tag)
 
   let extracted = { tags: [] as string[], flavors: [] as { name: string; intensity: number; confidence: number }[] }
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
     } catch { /* AI not configured */ }
   }
 
-  const { data: note, error } = await supabase.from('voice_notes').insert({
+  const { data: note, error } = await admin.from('voice_notes').insert({
     id: noteId,
     barrel_id: barrelId,
     distillery_id: distilleryId,
@@ -56,21 +57,21 @@ export async function POST(req: NextRequest) {
 
   // Update barrel tags
   if (extracted.tags.length) {
-    const { data: barrel } = await supabase.from('barrels').select('tags').eq('id', barrelId).single()
+    const { data: barrel } = await admin.from('barrels').select('tags').eq('id', barrelId).single()
     const existingTags = barrel?.tags || []
     const mergedTags = Array.from(new Set([...existingTags, ...extracted.tags]))
-    await supabase.from('barrels').update({ tags: mergedTags }).eq('id', barrelId)
+    await admin.from('barrels').update({ tags: mergedTags }).eq('id', barrelId)
   }
 
   return NextResponse.json(note)
 }
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerSupabaseClient()
+  const admin = createServiceClient()
   const { searchParams } = new URL(req.url)
   const barrelId = searchParams.get('barrel_id')
 
-  let q = supabase.from('voice_notes').select('*')
+  let q = admin.from('voice_notes').select('*')
   if (barrelId) q = q.eq('barrel_id', barrelId)
   q = q.order('recorded_at', { ascending: false })
 

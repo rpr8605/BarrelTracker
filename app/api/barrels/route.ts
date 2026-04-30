@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, getActiveDistilleryId } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient, getActiveDistilleryId } from '@/lib/supabase-server'
 import { getMyDistilleryId } from '@/lib/distillery'
 
 export async function GET(req: NextRequest) {
@@ -9,10 +9,11 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
+  const admin = createServiceClient()
 
-  const distilleryId = await getMyDistilleryId(supabase, user!.id, getActiveDistilleryId())
+  const distilleryId = await getMyDistilleryId(admin, user!.id, getActiveDistilleryId())
 
-  let q = supabase.from('barrels').select('*').eq('distillery_id', distilleryId ?? 'none')
+  let q = admin.from('barrels').select('*').eq('distillery_id', distilleryId ?? 'none')
   if (status) q = q.eq('status', status)
 
   const { data, error } = await q.order('created_at', { ascending: false })
@@ -26,7 +27,8 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { data, error } = await supabase.from('barrels').insert(body).select().single()
+  const admin = createServiceClient()
+  const { data, error } = await admin.from('barrels').insert(body).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
 }

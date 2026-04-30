@@ -1,4 +1,4 @@
-import { createServerSupabaseClient, getActiveDistilleryId } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient, getActiveDistilleryId } from '@/lib/supabase-server'
 import { getMyDistilleryId } from '@/lib/distillery'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -9,10 +9,11 @@ import Link from 'next/link'
 export default async function BatchesPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const admin = createServiceClient()
 
-  const distilleryId = await getMyDistilleryId(supabase, user!.id, getActiveDistilleryId())
+  const distilleryId = await getMyDistilleryId(admin, user!.id, getActiveDistilleryId())
 
-  const { data: batches } = await supabase
+  const { data: batches } = await admin
     .from('batches')
     .select('*')
     .eq('distillery_id', distilleryId ?? 'none')

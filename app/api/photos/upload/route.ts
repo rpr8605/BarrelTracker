@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { uploadToR2, generatePhotoKey } from '@/lib/r2'
 
 export async function POST(req: NextRequest) {
@@ -23,9 +23,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Storage not configured' }, { status: 500 })
   }
 
-  const { data: barrel } = await supabase.from('barrels').select('photos').eq('id', barrelId).single()
+  const admin = createServiceClient()
+  const { data: barrel } = await admin.from('barrels').select('photos').eq('id', barrelId).single()
   const photos = [...(barrel?.photos || []), url]
-  await supabase.from('barrels').update({ photos }).eq('id', barrelId)
+  await admin.from('barrels').update({ photos }).eq('id', barrelId)
 
   return NextResponse.json({ url })
 }

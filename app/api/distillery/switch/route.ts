@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { getMyDistilleryId } from '@/lib/distillery'
 
 export async function POST(req: NextRequest) {
@@ -8,10 +8,11 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { distilleryId } = await req.json()
+  const admin = createServiceClient()
 
   // Verify user actually has access to this distillery
-  const myId = await getMyDistilleryId(supabase, user.id)
-  const { data: roleCheck } = await supabase
+  const myId = await getMyDistilleryId(admin, user.id)
+  const { data: roleCheck } = await admin
     .from('user_roles')
     .select('distillery_id')
     .eq('user_id', user.id)

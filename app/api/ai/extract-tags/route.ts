@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { extractTagsFromText } from '@/lib/anthropic'
 
 export async function POST(req: NextRequest) {
@@ -8,8 +8,9 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { transcript, barrel_data, barrel_id } = await req.json()
+  const admin = createServiceClient()
 
-  const { data: tagEntries } = await supabase
+  const { data: tagEntries } = await admin
     .from('tag_library')
     .select('tag')
     .order('usage_count', { ascending: false })
@@ -26,9 +27,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (barrel_id && result.tags.length) {
-    const { data: barrel } = await supabase.from('barrels').select('tags').eq('id', barrel_id).single()
+    const { data: barrel } = await admin.from('barrels').select('tags').eq('id', barrel_id).single()
     const merged = Array.from(new Set([...(barrel?.tags || []), ...result.tags]))
-    await supabase.from('barrels').update({ tags: merged }).eq('id', barrel_id)
+    await admin.from('barrels').update({ tags: merged }).eq('id', barrel_id)
   }
 
   return NextResponse.json(result)

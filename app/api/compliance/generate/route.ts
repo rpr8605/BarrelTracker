@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { generateComplianceReport } from '@/lib/anthropic'
 
 export async function POST(req: NextRequest) {
@@ -8,13 +8,14 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { distillery_id, month } = await req.json()
+  const admin = createServiceClient()
 
   const monthStart = new Date(month)
   const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
 
   const [barrelsRes, batchesRes] = await Promise.all([
-    supabase.from('barrels').select('*').eq('distillery_id', distillery_id),
-    supabase.from('batches').select('*').eq('distillery_id', distillery_id)
+    admin.from('barrels').select('*').eq('distillery_id', distillery_id),
+    admin.from('batches').select('*').eq('distillery_id', distillery_id)
       .gte('created_at', monthStart.toISOString())
       .lte('created_at', monthEnd.toISOString()),
   ])
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     generatedData = await generateComplianceReport(distillery_id, reportData)
   } catch { /* AI not configured */ }
 
-  const { data: report, error } = await supabase.from('ttb_reports').upsert({
+  const { data: report, error } = await admin.from('ttb_reports').upsert({
     distillery_id,
     report_month: month,
     report_data: generatedData,

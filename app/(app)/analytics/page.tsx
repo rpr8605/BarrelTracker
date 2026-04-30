@@ -1,4 +1,4 @@
-import { createServerSupabaseClient, getActiveDistilleryId } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient, getActiveDistilleryId } from '@/lib/supabase-server'
 import { getMyDistilleryId } from '@/lib/distillery'
 import { Card } from '@/components/ui/Card'
 import { getBarrelAgeMonths, estimateAngelsShare } from '@/lib/tags'
@@ -7,10 +7,11 @@ import type { Barrel } from '@/types/database'
 export default async function AnalyticsPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const admin = createServiceClient()
 
-  const distilleryId = await getMyDistilleryId(supabase, user!.id, getActiveDistilleryId())
+  const distilleryId = await getMyDistilleryId(admin, user!.id, getActiveDistilleryId())
 
-  const { data: barrels } = await supabase
+  const { data: barrels } = await admin
     .from('barrels')
     .select('*')
     .eq('distillery_id', distilleryId ?? 'none')
