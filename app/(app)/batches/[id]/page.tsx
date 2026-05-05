@@ -15,17 +15,29 @@ export default function BatchDetailPage() {
   const [barrels, setBarrels] = useState<Barrel[]>([])
   const [generating, setGenerating] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [canWrite, setCanWrite] = useState(false)
+  const [bottleCount, setBottleCount] = useState<number>(0)
+  const [bottling, setBottling] = useState(false)
+  const [bottleError, setBottleError] = useState<string | null>(null)
+  const [bottleSuccess, setBottleSuccess] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
     supabase.from('batches').select('*').eq('id', id).single().then(({ data }) => {
       if (data) {
         setBatch(data as Batch)
+        setBottleCount(data.bottle_count ?? 0)
         if (data.barrel_ids?.length) {
           supabase.from('barrels').select('*').in('id', data.barrel_ids).then(({ data: b }) => {
             setBarrels((b || []) as Barrel[])
           })
         }
+        // Check write access by attempting a no-op update dry-run via helper
+        supabase.rpc('distilleries_i_can_write').then(({ data: writable }) => {
+          if (writable && Array.isArray(writable) && writable.includes(data.distillery_id)) {
+            setCanWrite(true)
+          }
+        })
       }
     })
   }, [id])
@@ -55,11 +67,37 @@ export default function BatchDetailPage() {
     setPublishing(false)
   }
 
+  async function handleBottle() {
+    if (!batch || bottleCount < 1) return
+    setBottling(true)
+    setBottleError(null)
+    try {
+      const res = await fetch(`/api/batches/${batch.id}/bottle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: bottleCount }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setBottleError(data.error || 'Failed to generate bottles')
+      } else {
+        setBatch((b) => b ? { ...b, bottled_date: new Date().toISOString().split('T')[0], bottle_count: data.bottleCount } : b)
+        setBottleSuccess(true)
+      }
+    } catch {
+      setBottleError('Something went wrong')
+    } finally {
+      setBottling(false)
+    }
+  }
+
   if (!batch) return (
     <div className="space-y-3">
       {[1,2].map(i => <div key={i} className="skeleton h-40 rounded-xl" />)}
     </div>
   )
+
+  const alreadyBottled = !!batch.bottled_date
 
   return (
     <div className="space-y-5 max-w-2xl mx-auto">
@@ -127,6 +165,73 @@ export default function BatchDetailPage() {
           )}
         </div>
       </Card>
+
+      {/* Bottling section */}
+      {alreadyBottled ? (
+        <Card className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Bottled</h3>
+            <span className="text-xs text-[var(--color-text-muted)]">{formatDate(batch.bottled_date!)}</span>
+          </div>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            {batch.bottle_count ?? 0} bottles generated
+          </p>
+          <a
+            href={`/api/batches/${batch.id}/qr-sheet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          >
+            Download QR sheet →
+          </a>
+        </Card>
+      ) : canWrite ? (
+        <Card className="space-y-3">
+          <h3 className="text-sm font-medium">Bottle this batch</h3>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            Generate numbered bottle records with unique QR codes for each bottle.
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <label className="text-xs text-[var(--color-text-muted)] mb-1 block">Number of bottles</label>
+              <input
+                type="number"
+                min={1}
+                max={10000}
+                value={bottleCount}
+                onChange={(e) => setBottleCount(parseInt(e.target.value) || 0)}
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+          {bottleError && (
+            <p className="text-xs text-red-500">{bottleError}</p>
+          )}
+          {bottleSuccess && (
+            <div className="space-y-2">
+              <p className="text-xs text-green-600 font-medium">Bottles generated successfully</p>
+              <a
+                href={`/api/batches/${batch.id}/qr-sheet`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+              >
+                Download QR sheet →
+              </a>
+            </div>
+          )}
+          {!bottleSuccess && (
+            <Button
+              onClick={handleBottle}
+              loading={bottling}
+              disabled={bottleCount < 1}
+              className="w-full"
+            >
+              Generate {bottleCount > 0 ? bottleCount : ''} bottle records
+            </Button>
+          )}
+        </Card>
+      ) : null}
     </div>
   )
 }

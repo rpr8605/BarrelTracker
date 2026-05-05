@@ -22,12 +22,25 @@ export async function middleware(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = req.nextUrl
-  const publicPaths = ['/login', '/onboarding']
+  const publicPaths = ['/login', '/signup', '/forgot-password', '/reset-password', '/auth/callback']
   const isPublic = publicPaths.some((p) => pathname.startsWith(p))
   const isApi = pathname.startsWith('/api')
   const isStoryPage = pathname.match(/^\/batches\/[^/]+\/story/)
+  const isBarrelStory = pathname.match(/^\/barrel\/[^/]/)
+  const isConsumerPage = pathname.startsWith('/adopt/') ||
+    pathname.startsWith('/passport/') ||
+    pathname.startsWith('/bottle/') ||
+    pathname.startsWith('/taste/') ||
+    pathname.startsWith('/drops/') ||
+    pathname.startsWith('/flights/') ||
+    pathname.startsWith('/widget/') ||
+    pathname.startsWith('/trail/') ||
+    pathname.startsWith('/checkin/') ||
+    pathname.startsWith('/profile/') ||
+    pathname === '/collection'
+  const isDistilleryProfile = /^\/distillery\/[^/]/.test(pathname)
 
-  if (!user && !isPublic && !isApi && !isStoryPage) {
+  if (!user && !isPublic && !isApi && !isStoryPage && !isBarrelStory && !isConsumerPage && !isDistilleryProfile) {
     const url = new URL('/login', req.url)
     return NextResponse.redirect(url)
   }
@@ -35,6 +48,16 @@ export async function middleware(req: NextRequest) {
   // Redirect authenticated users away from login
   if (user && pathname === '/login') {
     return NextResponse.redirect(new URL('/dashboard', req.url))
+  }
+
+  // Block writes during admin impersonation
+  const viewingAs = req.cookies.get('viewing_as_distillery_id')?.value
+  if (viewingAs && isApi && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    const allowedWriteApis = ['/api/admin/', '/api/auth/']
+    const isAllowed = allowedWriteApis.some((prefix) => pathname.startsWith(prefix))
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Write operations blocked during admin view' }, { status: 403 })
+    }
   }
 
   return res

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ENVIRONMENTS } from '@/lib/environments'
 import type { AppEnvironment } from '@/lib/environments'
 
@@ -235,6 +236,17 @@ export default function LoginPage() {
             {env.passwordless ? 'Enter Demo' : 'Sign in'}
           </Button>
 
+          {!env.passwordless && (
+            <p className="text-xs text-center">
+              <Link
+                href="/forgot-password"
+                className="text-[var(--color-text-muted)] underline-offset-2 hover:underline hover:text-primary"
+              >
+                Forgot password?
+              </Link>
+            </p>
+          )}
+
           {/* Biometric login — only for users who have already registered a credential */}
           {biometricAvailable && biometricRegistered && !env.passwordless && (
             <>
@@ -263,7 +275,11 @@ export default function LoginPage() {
         </div>
 
         <p className="text-xs text-center text-[var(--color-text-muted)]">
-          Need access? Contact your administrator.
+          Need access?{' '}
+          <Link href="/signup" className="text-primary underline-offset-2 hover:underline">
+            Create an account
+          </Link>
+          {' '}or contact your administrator.
         </p>
       </div>
     </div>

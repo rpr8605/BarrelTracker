@@ -13,6 +13,7 @@ const nav = [
   { href: '/profile', label: 'Taste Profile', icon: '◈' },
   { href: '/suggestions', label: 'Suggestions', icon: '✦' },
   { href: '/batches', label: 'Batches', icon: '▣' },
+  { href: '/sponsorships', label: 'Sponsorships', icon: '✦' },
   { href: '/compliance', label: 'Compliance', icon: '✓' },
   { href: '/analytics', label: 'Analytics', icon: '↗' },
   { href: '/settings', label: 'Settings', icon: '⚙' },

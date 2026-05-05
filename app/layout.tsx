@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
+import { Suspense } from 'react'
 import './globals.css'
+import { PostHogProvider } from '@/components/analytics/PostHogProvider'
 
 export const metadata: Metadata = {
   title: 'Still — Distillery Management',
@@ -16,7 +18,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Suspense fallback={null}>
+          <PostHogProvider>
+            {children}
+          </PostHogProvider>
+        </Suspense>
+      </body>
     </html>
   )
 }

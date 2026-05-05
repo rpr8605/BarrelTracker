@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -16,6 +16,8 @@ export default function SettingsPage() {
   const [webhookUrl, setWebhookUrl] = useState('')
   const [webhookSaving, setWebhookSaving] = useState(false)
   const [thresholds, setThresholds] = useState({ tempHigh: 90, tempLow: 40, humidHigh: 75, humidLow: 40 })
+  const [widgetCopied, setWidgetCopied] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -70,6 +72,45 @@ export default function SettingsPage() {
         </div>
         <p className="text-xs text-[var(--color-text-muted)]">Alerts send to the distillery owner email when thresholds are breached.</p>
       </Card>
+
+      {distillery && (
+        <Card className="space-y-4">
+          <h2 className="text-sm font-medium">Embed Widget</h2>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            Drop this iframe on your website to show your available barrels with an Adopt button.
+            Supports <code className="bg-[var(--color-bg-secondary)] px-1 py-0.5 rounded text-primary">?theme=light</code> or <code className="bg-[var(--color-bg-secondary)] px-1 py-0.5 rounded text-primary">?theme=dark</code>.
+          </p>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3 text-xs font-mono text-[var(--color-text-muted)] break-all select-all">
+            {`<iframe src="https://barrel-tracker.vercel.app/widget/${distillery.id}" width="100%" height="400" frameborder="0"></iframe>`}
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              navigator.clipboard.writeText(
+                `<iframe src="https://barrel-tracker.vercel.app/widget/${distillery.id}" width="100%" height="400" frameborder="0"></iframe>`
+              )
+              setWidgetCopied(true)
+              setTimeout(() => setWidgetCopied(false), 2000)
+            }}
+          >
+            {widgetCopied ? 'Copied ✓' : 'Copy embed code'}
+          </Button>
+          <div className="border border-[var(--color-border)] rounded-lg overflow-hidden">
+            <p className="text-xs text-[var(--color-text-muted)] px-3 py-2 border-b border-[var(--color-border)]">Preview</p>
+            {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+            <iframe
+              ref={iframeRef}
+              src={`/widget/${distillery.id}?theme=dark`}
+              width="100%"
+              height="340"
+              frameBorder={0}
+              title="Barrel Widget Preview"
+              className="block"
+            />
+          </div>
+        </Card>
+      )}
 
       <Card className="space-y-3">
         <h2 className="text-sm font-medium">Account</h2>

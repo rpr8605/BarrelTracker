@@ -8,11 +8,14 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, hint, className, ...props }, ref) => (
+  ({ label, error, hint, className, id, ...props }, ref) => {
+    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined)
+    return (
     <div className="space-y-1">
-      {label && <label className="block text-sm font-medium text-[var(--color-text)]">{label}</label>}
+      {label && <label htmlFor={inputId} className="block text-sm font-medium text-[var(--color-text)]">{label}</label>}
       <input
         ref={ref}
+        id={inputId}
         className={cn(
           'w-full px-3 py-2.5 rounded-lg border text-[var(--color-text)] bg-[var(--color-surface)] placeholder:text-[var(--color-text-muted)] text-sm outline-none transition-all min-h-[44px]',
           error
@@ -26,6 +29,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       {hint && !error && <p className="text-xs text-[var(--color-text-muted)]">{hint}</p>}
     </div>
   )
+  }
 )
 Input.displayName = 'Input'
 

@@ -4,6 +4,8 @@ import { Card } from '@/components/ui/Card'
 import { getBarrelAgeMonths, estimateAngelsShare } from '@/lib/tags'
 import type { Barrel } from '@/types/database'
 
+const POSTHOG_CONFIGURED = !!(process.env.NEXT_PUBLIC_POSTHOG_KEY)
+
 export default async function AnalyticsPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -114,6 +116,60 @@ export default async function AnalyticsPage() {
           </div>
         </Card>
       )}
+
+      {/* PostHog usage analytics card */}
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-medium mb-1">Usage Analytics</h3>
+            {POSTHOG_CONFIGURED ? (
+              <>
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  Analytics powered by PostHog. Your full dashboard is available at{' '}
+                  <a
+                    href="https://posthog.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    posthog.com
+                  </a>
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-2">
+                  Key events tracked: <span className="font-mono text-primary">barrel_viewed</span>,{' '}
+                  <span className="font-mono text-primary">trail_checkin</span>,{' '}
+                  <span className="font-mono text-primary">distillery_followed</span>,{' '}
+                  <span className="font-mono text-primary">$pageview</span>
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-[var(--color-text-muted)] mb-2">
+                  PostHog is not yet connected. To enable usage analytics, add the following to your{' '}
+                  <span className="font-mono text-xs bg-[var(--color-bg-secondary)] px-1 py-0.5 rounded">.env.local</span>:
+                </p>
+                <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3 text-xs font-mono space-y-1 text-[var(--color-text)]">
+                  <div>NEXT_PUBLIC_POSTHOG_KEY=phc_xxxxxxxxxxxx</div>
+                  <div>NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com</div>
+                </div>
+                <p className="text-xs text-[var(--color-text-muted)] mt-2">
+                  Get your key at{' '}
+                  <a
+                    href="https://posthog.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    posthog.com
+                  </a>{' '}
+                  — free tier supports up to 1 million events/month.
+                </p>
+              </>
+            )}
+          </div>
+          <div className={`shrink-0 w-2 h-2 rounded-full mt-1.5 ${POSTHOG_CONFIGURED ? 'bg-green-500' : 'bg-yellow-400'}`} />
+        </div>
+      </Card>
     </div>
   )
 }
