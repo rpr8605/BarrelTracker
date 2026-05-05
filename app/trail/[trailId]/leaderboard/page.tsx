@@ -74,7 +74,7 @@ export default async function LeaderboardPage({ params }: { params: { trailId: s
   }
 
   // Fetch consumer profiles
-  const consumerIds = [...new Set(passports.map((p) => p.consumer_id))]
+  const consumerIds = Array.from(new Set(passports.map((p) => p.consumer_id)))
   const { data: profilesData } = await db
     .from('consumer_profiles')
     .select('id, display_name, avatar_url')

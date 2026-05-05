@@ -14,7 +14,7 @@ interface TastingNoteRow {
   notes: string | null
   flavor_tags: string[] | null
   created_at: string
-  consumer_profiles: { display_name: string } | null
+  consumer_profiles: { display_name: string }[] | { display_name: string } | null
 }
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -128,7 +128,7 @@ export default async function StoryPage({ params }: { params: { id: string } }) 
                 <div key={note.id} className="pb-6 border-b border-white/5 last:border-0">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-[#f5efe3]">
-                      {note.consumer_profiles?.display_name || 'Anonymous'}
+                      {(Array.isArray(note.consumer_profiles) ? note.consumer_profiles[0]?.display_name : note.consumer_profiles?.display_name) || 'Anonymous'}
                     </span>
                     <span className="text-xs text-[#c9b48a]/60">{formatDate(note.created_at)}</span>
                   </div>

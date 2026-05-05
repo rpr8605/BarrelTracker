@@ -94,7 +94,7 @@ export function PushSubscribeButton({ distilleryId, barrelId, type, label }: Pro
       const reg = await navigator.serviceWorker.ready
       const pushSub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC) as unknown as BufferSource,
       })
 
       const rawSub = pushSub.toJSON() as {

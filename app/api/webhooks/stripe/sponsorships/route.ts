@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import Stripe from 'stripe'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const stripe = new (Stripe as any)(process.env.STRIPE_SECRET_KEY!) as Stripe
-
 export async function POST(req: NextRequest) {
-  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+  if (!process.env.STRIPE_WEBHOOK_SECRET || !process.env.STRIPE_SECRET_KEY) {
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stripe = new (Stripe as any)(process.env.STRIPE_SECRET_KEY) as Stripe
 
   const body = await req.text()
   const sig = req.headers.get('stripe-signature') ?? ''

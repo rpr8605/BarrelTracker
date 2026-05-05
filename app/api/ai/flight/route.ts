@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Barrels not found' }, { status: 404 })
     }
 
-    function ageMonths(entryDate: string | null): number | null {
+    const ageMonths = (entryDate: string | null): number | null => {
       if (!entryDate) return null
       return Math.floor((Date.now() - new Date(entryDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
     }

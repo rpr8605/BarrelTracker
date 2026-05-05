@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: { dropId: str
     if (stripeKey) {
       try {
         const Stripe = (await import('stripe')).default
-        const stripe = new Stripe(stripeKey, { apiVersion: '2024-06-20' as never })
+        const stripe = new (Stripe as any)(stripeKey) as InstanceType<typeof Stripe>
         const session = await stripe.checkout.sessions.create({
           mode: 'payment',
           line_items: [

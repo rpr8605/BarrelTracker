@@ -9,7 +9,7 @@ const VAPID_MAILTO =
 const PUSH_CONFIGURED = !!VAPID_PUBLIC && !!VAPID_PRIVATE
 
 if (PUSH_CONFIGURED) {
-  webpush.setVAPIDDetails(VAPID_MAILTO, VAPID_PUBLIC, VAPID_PRIVATE)
+  webpush.setVapidDetails(VAPID_MAILTO, VAPID_PUBLIC, VAPID_PRIVATE)
 }
 
 export interface PushPayload {

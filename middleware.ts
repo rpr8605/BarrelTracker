@@ -22,6 +22,17 @@ export async function middleware(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = req.nextUrl
+
+  // Master admin double-lock: cookie key must match STILL_ADMIN_KEY
+  if (pathname.startsWith('/master') || pathname.startsWith('/api/admin/master')) {
+    const adminKey = process.env.STILL_ADMIN_KEY
+    const cookieKey = req.cookies.get('x-still-admin-key')?.value
+    const headerKey = req.headers.get('x-still-admin-key')
+    if (!adminKey || (cookieKey !== adminKey && headerKey !== adminKey)) {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+  }
+
   const publicPaths = ['/login', '/signup', '/forgot-password', '/reset-password', '/auth/callback']
   const isPublic = publicPaths.some((p) => pathname.startsWith(p))
   const isApi = pathname.startsWith('/api')

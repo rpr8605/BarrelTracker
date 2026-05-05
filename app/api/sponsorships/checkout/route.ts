@@ -2,15 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient, createServerSupabaseClient } from '@/lib/supabase-server'
 import Stripe from 'stripe'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const stripe = new (Stripe as any)(process.env.STRIPE_SECRET_KEY!) as Stripe
-
 const PLATFORM_FEE_PCT = 0.10
 
 export async function POST(req: NextRequest) {
   if (!process.env.STRIPE_SECRET_KEY) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stripe = new (Stripe as any)(process.env.STRIPE_SECRET_KEY) as Stripe
 
   const {
     barrelId, distilleryId, tier, amountCents, sponsorName, sponsorEmail,
