@@ -7,7 +7,7 @@ import { Input, Select } from '@/components/ui/Input'
 import { TagChip } from '@/components/ui/Badge'
 import { LabelScanner } from '@/components/barrels/LabelScanner'
 import { createClient } from '@/lib/supabase'
-import { TTB_SPIRITS_TYPES } from '@/lib/ttb'
+import { TTB_SPIRITS_TYPES, COOPERAGE_CODES, validateCooperage } from '@/lib/ttb'
 import type { ExtractedLabel } from '@/components/barrels/LabelScanner'
 
 const GRAIN_OPTIONS = ['Wheat', 'High Wheat', 'Corn', 'High Corn', 'Rye', 'High Rye', 'Malted Rye', 'Barley', 'Four Grain', 'Heirloom Corn']
@@ -29,6 +29,8 @@ export default function NewBarrelPage() {
     distillery_source: '',
     entry_proof: '',
     wine_gallons: '',
+    cooperage_code: 'C',
+    gross_weight_lbs: '',
     warehouse_row: '',
     warehouse_slot: '',
     warehouse_tier: '',
@@ -72,6 +74,8 @@ export default function NewBarrelPage() {
 
       const wineGal = form.wine_gallons ? parseFloat(form.wine_gallons) : null
       const entryProof = form.entry_proof ? parseFloat(form.entry_proof) : null
+      const cooperageErr = validateCooperage(form.spirits_type, form.cooperage_code)
+      if (cooperageErr) { setError(cooperageErr); setSaving(false); return }
 
       const { data: barrel, error: err } = await supabase.from('barrels').insert({
         distillery_id: distilleryId,
@@ -84,6 +88,8 @@ export default function NewBarrelPage() {
         wine_gallons: wineGal,
         current_wine_gallons: wineGal,
         spirits_type: form.spirits_type || 'bourbon',
+        cooperage_code: form.cooperage_code || null,
+        gross_weight_lbs: form.gross_weight_lbs ? parseFloat(form.gross_weight_lbs) : null,
         warehouse_row: form.warehouse_row || null,
         warehouse_slot: form.warehouse_slot ? parseInt(form.warehouse_slot) : null,
         warehouse_tier: form.warehouse_tier ? parseInt(form.warehouse_tier) : null,
@@ -94,20 +100,19 @@ export default function NewBarrelPage() {
 
       if (err) throw new Error(err.message)
 
-      // Create fill event for TTB ledger
-      if (wineGal) {
+      if (wineGal && entryProof) {
+        const fillDate = form.entry_date ? new Date(form.entry_date).toISOString() : new Date().toISOString()
+        // TTB ledger event
         fetch('/api/compliance/events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            barrel_id: barrel.id,
-            distillery_id: distilleryId,
-            event_type: 'fill',
-            wine_gallons: wineGal,
-            proof: entryProof,
-            notes: `Initial fill — ${form.barrel_number}`,
-            occurred_at: form.entry_date ? new Date(form.entry_date).toISOString() : new Date().toISOString(),
-          }),
+          body: JSON.stringify({ barrel_id: barrel.id, distillery_id: distilleryId, event_type: 'fill', wine_gallons: wineGal, proof: entryProof, notes: `Initial fill — ${form.barrel_number}`, occurred_at: fillDate }),
+        }).catch(() => {})
+        // Gauge record at fill (27 CFR 19.618 requires gauging at barrel fill)
+        fetch('/api/compliance/gauge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ distillery_id: distilleryId, barrel_id: barrel.id, gauge_type: 'fill', container_id: form.barrel_number, gauged_at: fillDate, temperature_f: 60, proof: entryProof, wine_gallons: wineGal, gauge_officer: 'System — recorded at fill', cooperage_code: form.cooperage_code || null, package_id: form.barrel_number, gross_weight_lbs: form.gross_weight_lbs ? parseFloat(form.gross_weight_lbs) : null, notes: 'Auto-recorded at barrel creation' }),
         }).catch(() => {})
       }
 
@@ -216,9 +221,24 @@ export default function NewBarrelPage() {
           <div className="space-y-4">
             <h2 className="font-medium">Volume & location</h2>
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Entry proof" type="number" value={form.entry_proof} onChange={(e) => set('entry_proof', e.target.value)} placeholder="e.g. 125" />
-              <Input label="Wine gallons filled" type="number" value={form.wine_gallons} onChange={(e) => set('wine_gallons', e.target.value)} placeholder="e.g. 53.0" />
+              <Input label="Entry proof *" type="number" value={form.entry_proof} onChange={(e) => set('entry_proof', e.target.value)} placeholder="e.g. 125" />
+              <Input label="Wine gallons filled *" type="number" value={form.wine_gallons} onChange={(e) => set('wine_gallons', e.target.value)} placeholder="e.g. 53.0" />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Gross weight (lbs)" type="number" value={form.gross_weight_lbs} onChange={(e) => set('gross_weight_lbs', e.target.value)} placeholder="e.g. 128" />
+            </div>
+            <Select
+              label="Cooperage code (TTB) *"
+              value={form.cooperage_code}
+              onChange={(e) => set('cooperage_code', e.target.value)}
+            >
+              {COOPERAGE_CODES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}{c.note ? ` — ${c.note}` : ''}</option>
+              ))}
+            </Select>
+            {validateCooperage(form.spirits_type, form.cooperage_code) && (
+              <p className="text-xs text-danger">{validateCooperage(form.spirits_type, form.cooperage_code)}</p>
+            )}
             <div className="grid grid-cols-3 gap-3">
               <Input label="Row" value={form.warehouse_row} onChange={(e) => set('warehouse_row', e.target.value)} placeholder="A" />
               <Input label="Slot" type="number" value={form.warehouse_slot} onChange={(e) => set('warehouse_slot', e.target.value)} placeholder="12" />

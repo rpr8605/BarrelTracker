@@ -39,8 +39,98 @@ export interface Barrel {
   current_wine_gallons: number | null
   spirits_type: string | null
   warehouse_account: string | null
+  cooperage_code: string | null
+  gross_weight_lbs: number | null
   created_at: string
   updated_at: string
+}
+
+export interface GaugeRecord {
+  id: string
+  distillery_id: string
+  barrel_id: string | null
+  gauge_type: 'production' | 'fill' | 'bottling' | 'regauge' | 'post_tib' | 'tamper'
+  container_id: string
+  gauged_at: string
+  temperature_f: number
+  proof: number
+  wine_gallons: number
+  proof_gallons: number
+  gauge_officer: string
+  cooperage_code: string | null
+  package_id: string | null
+  gross_weight_lbs: number | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface ProductionLog {
+  id: string
+  distillery_id: string
+  log_type: 'mash_batch' | 'fermentation' | 'distillation' | 'transfer_to_storage' | 'production_loss'
+  batch_number: string | null
+  grain_bill: Record<string, number> | null
+  grain_quantity_lbs: number | null
+  fermentation_start: string | null
+  fermentation_end: string | null
+  starting_gravity: number | null
+  ending_gravity: number | null
+  still_id: string | null
+  spirits_type: string | null
+  spirits_produced_proof_gallons: number | null
+  spirits_produced_wine_gallons: number | null
+  transfer_proof_gallons: number | null
+  transfer_wine_gallons: number | null
+  transfer_proof: number | null
+  loss_proof_gallons: number | null
+  loss_cause: string | null
+  occurred_at: string
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface ProcessingLog {
+  id: string
+  distillery_id: string
+  log_type: 'bottling_run' | 'remnant' | 'leaker' | 'tax_removal' | 'processing_receipt' | 'processing_loss'
+  spirits_type: string | null
+  product_name: string | null
+  proof: number | null
+  wine_gallons: number | null
+  proof_gallons: number | null
+  bottles_filled: number | null
+  bottle_size_ml: number | null
+  case_count: number | null
+  removal_type: 'tasting_room' | 'retail' | 'wholesale' | 'export' | null
+  loss_cause: 'breakage' | 'leaker' | 'spillage' | 'evaporation' | 'other' | null
+  occurred_at: string
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface InventoryAttestation {
+  id: string
+  distillery_id: string
+  inventory_type: 'quarterly_storage' | 'semi_annual_processing'
+  period_label: string
+  inventory_date: string
+  total_proof_gallons: number
+  barrel_count: number | null
+  container_count: number | null
+  inventory_data: Array<{
+    container_id: string
+    spirits_type: string
+    proof_gallons: number
+    location?: string
+  }>
+  attested_by_name: string
+  attested_by_user_id: string | null
+  attested_at: string | null
+  status: 'draft' | 'attested'
+  created_at: string
 }
 
 export interface BarrelEvent {
