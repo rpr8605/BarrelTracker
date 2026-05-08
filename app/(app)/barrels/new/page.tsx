@@ -3,10 +3,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { Input, Select } from '@/components/ui/Input'
 import { TagChip } from '@/components/ui/Badge'
 import { LabelScanner } from '@/components/barrels/LabelScanner'
 import { createClient } from '@/lib/supabase'
+import { TTB_SPIRITS_TYPES } from '@/lib/ttb'
 import type { ExtractedLabel } from '@/components/barrels/LabelScanner'
 
 const GRAIN_OPTIONS = ['Wheat', 'High Wheat', 'Corn', 'High Corn', 'Rye', 'High Rye', 'Malted Rye', 'Barley', 'Four Grain', 'Heirloom Corn']
@@ -23,9 +24,11 @@ export default function NewBarrelPage() {
     barrel_number: '',
     entry_date: new Date().toISOString().split('T')[0],
     mash_bill: '',
+    spirits_type: 'bourbon',
     grain_type: [] as string[],
     distillery_source: '',
     entry_proof: '',
+    wine_gallons: '',
     warehouse_row: '',
     warehouse_slot: '',
     warehouse_tier: '',
@@ -51,10 +54,8 @@ export default function NewBarrelPage() {
   }
 
   async function getDistilleryId(supabase: ReturnType<typeof createClient>, userId: string) {
-    // Try owner first
     const { data: owned } = await supabase.from('distilleries').select('id').eq('owner_id', userId).limit(1).single()
     if (owned) return owned.id
-    // Try member role
     const { data: role } = await supabase.from('user_roles').select('distillery_id').eq('user_id', userId).limit(1).single()
     return role?.distillery_id ?? null
   }
@@ -66,18 +67,23 @@ export default function NewBarrelPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       const distilleryId = await getDistilleryId(supabase, user!.id)
-      const distillery = distilleryId ? { id: distilleryId } : null
 
-      if (!distillery) { setError('Set up a distillery first'); setSaving(false); return }
+      if (!distilleryId) { setError('Set up a distillery first'); setSaving(false); return }
+
+      const wineGal = form.wine_gallons ? parseFloat(form.wine_gallons) : null
+      const entryProof = form.entry_proof ? parseFloat(form.entry_proof) : null
 
       const { data: barrel, error: err } = await supabase.from('barrels').insert({
-        distillery_id: distillery!.id,
+        distillery_id: distilleryId,
         barrel_number: form.barrel_number,
         entry_date: form.entry_date || null,
         mash_bill: form.mash_bill || null,
         grain_type: form.grain_type.length ? form.grain_type : null,
         distillery_source: form.distillery_source || null,
-        entry_proof: form.entry_proof ? parseFloat(form.entry_proof) : null,
+        entry_proof: entryProof,
+        wine_gallons: wineGal,
+        current_wine_gallons: wineGal,
+        spirits_type: form.spirits_type || 'bourbon',
         warehouse_row: form.warehouse_row || null,
         warehouse_slot: form.warehouse_slot ? parseInt(form.warehouse_slot) : null,
         warehouse_tier: form.warehouse_tier ? parseInt(form.warehouse_tier) : null,
@@ -88,7 +94,23 @@ export default function NewBarrelPage() {
 
       if (err) throw new Error(err.message)
 
-      // Fire AI tag extraction in background
+      // Create fill event for TTB ledger
+      if (wineGal) {
+        fetch('/api/compliance/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            barrel_id: barrel.id,
+            distillery_id: distilleryId,
+            event_type: 'fill',
+            wine_gallons: wineGal,
+            proof: entryProof,
+            notes: `Initial fill — ${form.barrel_number}`,
+            occurred_at: form.entry_date ? new Date(form.entry_date).toISOString() : new Date().toISOString(),
+          }),
+        }).catch(() => {})
+      }
+
       fetch('/api/ai/extract-tags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,6 +155,15 @@ export default function NewBarrelPage() {
             <Input label="Barrel number *" value={form.barrel_number} onChange={(e) => set('barrel_number', e.target.value)} placeholder="e.g. CR-041" />
             <Input label="Fill date" type="date" value={form.entry_date} onChange={(e) => set('entry_date', e.target.value)} />
             <Input label="Mash bill" value={form.mash_bill} onChange={(e) => set('mash_bill', e.target.value)} placeholder="e.g. 75% corn, 21% rye, 4% malt" />
+            <Select
+              label="Spirit class (TTB)"
+              value={form.spirits_type}
+              onChange={(e) => set('spirits_type', e.target.value)}
+            >
+              {TTB_SPIRITS_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </Select>
           </div>
         )}
 
@@ -183,8 +214,11 @@ export default function NewBarrelPage() {
 
         {step === 4 && (
           <div className="space-y-4">
-            <h2 className="font-medium">Warehouse location</h2>
-            <Input label="Entry proof" type="number" value={form.entry_proof} onChange={(e) => set('entry_proof', e.target.value)} placeholder="e.g. 125" />
+            <h2 className="font-medium">Volume & location</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Entry proof" type="number" value={form.entry_proof} onChange={(e) => set('entry_proof', e.target.value)} placeholder="e.g. 125" />
+              <Input label="Wine gallons filled" type="number" value={form.wine_gallons} onChange={(e) => set('wine_gallons', e.target.value)} placeholder="e.g. 53.0" />
+            </div>
             <div className="grid grid-cols-3 gap-3">
               <Input label="Row" value={form.warehouse_row} onChange={(e) => set('warehouse_row', e.target.value)} placeholder="A" />
               <Input label="Slot" type="number" value={form.warehouse_slot} onChange={(e) => set('warehouse_slot', e.target.value)} placeholder="12" />
@@ -217,16 +251,18 @@ export default function NewBarrelPage() {
           <div className="space-y-4">
             <h2 className="font-medium">Review</h2>
             <div className="space-y-2 text-sm">
-              {[
+              {([
                 ['Barrel', form.barrel_number],
                 ['Fill date', form.entry_date],
                 ['Mash bill', form.mash_bill],
+                ['Spirit class', TTB_SPIRITS_TYPES.find((t) => t.value === form.spirits_type)?.label ?? form.spirits_type],
                 ['Grain', form.grain_type.join(', ')],
                 ['Source', form.distillery_source],
                 ['Entry proof', form.entry_proof],
-                ['Location', form.warehouse_row ? `Row ${form.warehouse_row} / Slot ${form.warehouse_slot} / Tier ${form.warehouse_tier}` : '—'],
+                ['Wine gallons', form.wine_gallons],
+                ['Location', form.warehouse_row ? `Row ${form.warehouse_row} / Slot ${form.warehouse_slot} / Tier ${form.warehouse_tier}` : ''],
                 ['Finish', form.finish_type],
-              ].map(([l, v]) => v ? (
+              ] as [string, string][]).map(([l, v]) => v ? (
                 <div key={l} className="flex justify-between border-b border-[var(--color-border)] pb-1.5">
                   <span className="text-[var(--color-text-muted)]">{l}</span>
                   <span className="text-[var(--color-text)] font-medium">{v}</span>

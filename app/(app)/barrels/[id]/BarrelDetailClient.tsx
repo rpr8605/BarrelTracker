@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Input, Select } from '@/components/ui/Input'
 import { StatusBadge, TagChip } from '@/components/ui/Badge'
 import { AgeBar } from '@/components/barrels/AgeBar'
 import { BarrelEditForm } from '@/components/barrels/BarrelEditForm'
@@ -17,8 +18,11 @@ import { getBarrelAgeMonths, estimateAngelsShare } from '@/lib/tags'
 import { isNFCSupported, writeNFCTag } from '@/lib/nfc'
 import { GeoLocation } from '@/components/barrels/GeoLocation'
 import { useCanWrite } from '@/lib/role-context'
-import type { Barrel, VoiceNote } from '@/types/database'
+import { TTB_EVENT_LABELS, formatWineGal, formatProofGal, calcProofGallons } from '@/lib/ttb'
+import type { Barrel, VoiceNote, BarrelEvent } from '@/types/database'
 import type { ExtractedLabel } from '@/components/barrels/LabelScanner'
+
+const EVENT_TYPES = ['fill','transfer_in','transfer_out','gain','loss','bottling','dump'] as const
 
 export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { barrel: Barrel; notes: VoiceNote[] }) {
   const [barrel, setBarrel] = useState(initial)
@@ -29,9 +33,18 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
   const [showQR, setShowQR] = useState(false)
   const [nfcWriting, setNfcWriting] = useState(false)
   const [nfcMsg, setNfcMsg] = useState('')
+  const [events, setEvents] = useState<BarrelEvent[]>([])
+  const [showEventForm, setShowEventForm] = useState(false)
+  const [eventSaving, setEventSaving] = useState(false)
+  const [eventForm, setEventForm] = useState({
+    event_type: 'loss' as typeof EVENT_TYPES[number],
+    wine_gallons: '',
+    proof: '',
+    notes: '',
+    occurred_at: new Date().toISOString().slice(0, 16),
+  })
   const canWrite = useCanWrite()
 
-  // Realtime subscription for voice notes
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
@@ -50,6 +63,14 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
+  }, [barrel.id])
+
+  // Load barrel events
+  useEffect(() => {
+    fetch(`/api/compliance/events?barrel_id=${barrel.id}`)
+      .then((r) => r.json())
+      .then((d) => setEvents(Array.isArray(d) ? d : []))
+      .catch(() => {})
   }, [barrel.id])
 
   const ageMonths = getBarrelAgeMonths(barrel.entry_date)
@@ -101,6 +122,45 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
       setNfcWriting(false)
     }
   }
+
+  async function saveEvent() {
+    if (!eventForm.wine_gallons) return
+    setEventSaving(true)
+    const res = await fetch('/api/compliance/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        barrel_id: barrel.id,
+        distillery_id: barrel.distillery_id,
+        event_type: eventForm.event_type,
+        wine_gallons: parseFloat(eventForm.wine_gallons),
+        proof: eventForm.proof ? parseFloat(eventForm.proof) : null,
+        notes: eventForm.notes || null,
+        occurred_at: new Date(eventForm.occurred_at).toISOString(),
+      }),
+    })
+    const ev = await res.json()
+    if (ev.id) {
+      setEvents((prev) => [ev, ...prev])
+      // Update local barrel volume estimate
+      const wg = parseFloat(eventForm.wine_gallons)
+      const pf = eventForm.proof ? parseFloat(eventForm.proof) : null
+      const pg = pf ? calcProofGallons(wg, pf) : null
+      const sign = ['fill', 'transfer_in', 'gain'].includes(eventForm.event_type) ? 1 : -1
+      setBarrel((b) => ({
+        ...b,
+        current_wine_gallons: Math.max(0, (b.current_wine_gallons ?? b.wine_gallons ?? 0) + wg * sign),
+      }))
+      setShowEventForm(false)
+      setEventForm({ event_type: 'loss', wine_gallons: '', proof: '', notes: '', occurred_at: new Date().toISOString().slice(0, 16) })
+    }
+    setEventSaving(false)
+  }
+
+  const currentWG = barrel.current_wine_gallons ?? barrel.wine_gallons
+  const currentPG = currentWG != null && barrel.entry_proof != null
+    ? calcProofGallons(currentWG, barrel.entry_proof)
+    : null
 
   return (
     <div className="space-y-5">
@@ -270,6 +330,100 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
                     <span className="text-sm text-primary font-medium">{barrel.profile_match_score}% match</span>
                   </div>
                 )}
+              </div>
+            )}
+          </Card>
+
+          {/* TTB Event Log */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-medium">Volume / TTB ledger</h3>
+                {(currentWG != null || currentPG != null) && (
+                  <div className="flex gap-3 mt-1">
+                    {currentWG != null && <span className="text-xs font-mono text-[var(--color-text-muted)]">{formatWineGal(currentWG)}</span>}
+                    {currentPG != null && <span className="text-xs font-mono text-[var(--color-text-muted)]">{formatProofGal(currentPG)}</span>}
+                  </div>
+                )}
+              </div>
+              {canWrite && (
+                <Button size="sm" variant="secondary" onClick={() => setShowEventForm(!showEventForm)}>
+                  {showEventForm ? 'Cancel' : '+ Log event'}
+                </Button>
+              )}
+            </div>
+
+            {showEventForm && (
+              <div className="mb-4 pb-4 border-b border-[var(--color-border)] space-y-3">
+                <Select
+                  label="Event type"
+                  value={eventForm.event_type}
+                  onChange={(e) => setEventForm((f) => ({ ...f, event_type: e.target.value as typeof EVENT_TYPES[number] }))}
+                >
+                  {EVENT_TYPES.map((t) => (
+                    <option key={t} value={t}>{TTB_EVENT_LABELS[t]}</option>
+                  ))}
+                </Select>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Wine gallons"
+                    type="number"
+                    placeholder="e.g. 2.5"
+                    value={eventForm.wine_gallons}
+                    onChange={(e) => setEventForm((f) => ({ ...f, wine_gallons: e.target.value }))}
+                  />
+                  <Input
+                    label="Proof (optional)"
+                    type="number"
+                    placeholder={barrel.entry_proof ? String(barrel.entry_proof) : 'e.g. 125'}
+                    value={eventForm.proof}
+                    onChange={(e) => setEventForm((f) => ({ ...f, proof: e.target.value }))}
+                  />
+                </div>
+                <Input
+                  label="Date & time"
+                  type="datetime-local"
+                  value={eventForm.occurred_at}
+                  onChange={(e) => setEventForm((f) => ({ ...f, occurred_at: e.target.value }))}
+                />
+                <Input
+                  label="Notes (optional)"
+                  placeholder="Reason for change, inspector name, etc."
+                  value={eventForm.notes}
+                  onChange={(e) => setEventForm((f) => ({ ...f, notes: e.target.value }))}
+                />
+                <Button size="sm" onClick={saveEvent} loading={eventSaving} disabled={!eventForm.wine_gallons} className="w-full">
+                  Save event
+                </Button>
+              </div>
+            )}
+
+            {events.length === 0 ? (
+              <p className="text-sm text-[var(--color-text-muted)]">No events logged yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {events.map((ev) => {
+                  const isPositive = ['fill', 'transfer_in', 'gain'].includes(ev.event_type)
+                  return (
+                    <div key={ev.id} className="flex items-start justify-between gap-2 text-xs py-1.5 border-b border-[var(--color-border)] last:border-0">
+                      <div>
+                        <div className="font-medium text-[var(--color-text)]">{TTB_EVENT_LABELS[ev.event_type]}</div>
+                        {ev.notes && <div className="text-[var(--color-text-muted)] mt-0.5">{ev.notes}</div>}
+                        <div className="text-[var(--color-text-muted)] mt-0.5">{formatDate(ev.occurred_at)}</div>
+                      </div>
+                      <div className="text-right font-mono shrink-0">
+                        <div className={isPositive ? 'text-green-400' : 'text-red-400'}>
+                          {isPositive ? '+' : '−'}{formatWineGal(ev.wine_gallons)}
+                        </div>
+                        {ev.proof_gallons != null && (
+                          <div className="text-[var(--color-text-muted)]">
+                            {isPositive ? '+' : '−'}{formatProofGal(ev.proof_gallons)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </Card>

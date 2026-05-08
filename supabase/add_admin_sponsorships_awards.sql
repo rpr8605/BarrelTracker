@@ -1,4 +1,5 @@
 -- Phase 2: Admin CRM, Sponsorships, QR Events, Awards
+create extension if not exists "pgcrypto";
 
 -- Add super_admin flag to user_profiles
 alter table user_profiles add column if not exists is_super_admin boolean default false;
@@ -14,12 +15,12 @@ alter table distilleries add column if not exists lat numeric;
 alter table distilleries add column if not exists lng numeric;
 
 -- Add public token to barrels for QR story pages
-alter table barrels add column if not exists public_token text unique default encode(gen_random_bytes(16), 'hex');
+alter table barrels add column if not exists public_token text unique default replace(gen_random_uuid()::text, '-', '');
 create index if not exists idx_barrels_public_token on barrels(public_token);
 
 -- Nancy's CRM
 create table if not exists crm_clients (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   contact_name text not null,
   distillery_name text not null,
   email text,
@@ -38,7 +39,7 @@ create policy "super_admin_all_crm" on crm_clients for all
 
 -- Sponsorship tiers for barrel story pages
 create table if not exists sponsorships (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   distillery_id uuid references distilleries(id) on delete cascade not null,
   barrel_id uuid references barrels(id) on delete cascade not null,
   consumer_id uuid references consumer_profiles(id) on delete set null,
@@ -70,7 +71,7 @@ create index if not exists idx_sponsorships_distillery on sponsorships(distiller
 
 -- QR scan events for analytics
 create table if not exists barrel_qr_events (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   distillery_id uuid references distilleries(id) on delete cascade not null,
   barrel_id uuid references barrels(id) on delete cascade not null,
   session_id text not null,
@@ -92,7 +93,7 @@ create index if not exists idx_qr_events_scanned on barrel_qr_events(scanned_at)
 
 -- Still Awards (data layer)
 create table if not exists awards (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   year integer not null,
   category text not null check (category in (
     'BEST_BOURBON','BEST_RYE','BEST_SINGLE_MALT','BEST_WHEAT','BEST_EXPERIMENTAL',
@@ -113,7 +114,7 @@ create policy "awards_super_admin_all" on awards for all
   using ((select is_super_admin from user_profiles where id = auth.uid()) = true);
 
 create table if not exists award_votes (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   consumer_id uuid references consumer_profiles(id) on delete cascade not null,
   award_id uuid references awards(id) on delete cascade not null,
   nominee_id uuid not null,
@@ -130,7 +131,7 @@ create index if not exists idx_award_votes_award on award_votes(award_id);
 
 -- Notification log
 create table if not exists notification_log (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   consumer_id uuid references consumer_profiles(id) on delete cascade,
   distillery_id uuid references distilleries(id) on delete cascade,
   barrel_id uuid references barrels(id) on delete set null,

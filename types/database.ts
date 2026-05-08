@@ -3,6 +3,7 @@ export interface Distillery {
   name: string
   location: string | null
   owner_id: string
+  dsp_number: string | null
   created_at: string
 }
 
@@ -34,8 +35,46 @@ export interface Barrel {
   location_captured_at: string | null
   location_label: string | null
   notes: string | null
+  wine_gallons: number | null
+  current_wine_gallons: number | null
+  spirits_type: string | null
+  warehouse_account: string | null
   created_at: string
   updated_at: string
+}
+
+export interface BarrelEvent {
+  id: string
+  barrel_id: string
+  distillery_id: string
+  event_type: 'fill' | 'transfer_in' | 'transfer_out' | 'gain' | 'loss' | 'bottling' | 'dump'
+  wine_gallons: number
+  proof: number | null
+  proof_gallons: number | null
+  notes: string | null
+  occurred_at: string
+  created_by: string | null
+  created_at: string
+}
+
+export interface ComplianceSnapshot {
+  id: string
+  distillery_id: string
+  period: string
+  spirits_type: string
+  beg_wine_gallons: number
+  beg_proof_gallons: number
+  received_wine_gallons: number
+  received_proof_gallons: number
+  removed_wine_gallons: number
+  removed_proof_gallons: number
+  end_wine_gallons: number
+  end_proof_gallons: number
+  discrepancy_wine_gallons: number
+  barrel_count: number
+  status: 'draft' | 'filed'
+  generated_at: string
+  filed_at: string | null
 }
 
 export interface VoiceNote {
