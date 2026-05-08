@@ -639,4 +639,3 @@ Pending (infrastructure, not code):
   - R2 credentials in Vercel
   - Stripe live keys
   - VAPID keys
-  - Apply migrations 20260508900000 + 20260508950000 in Supabase SQL editor
