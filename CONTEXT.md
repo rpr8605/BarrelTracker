@@ -518,7 +518,6 @@ Runs daily at 08:00 UTC — barrel milestone checks and notification dispatch.
 - Angel's share analytics — field exists on barrel (angels_share_pct) but calculation source not found
 
 ### Not started
-- Phase 7 TIB/Bonds/Permits
 - State-level compliance
 - Pay.gov integration
 - Tier 2 schema refactor (7 new tables replacing flat production_logs/processing_logs)
@@ -607,9 +606,37 @@ Added:
   - lib/ttb/index.ts: exports validateStandardOfIdentity, ValidationResult, calculateBarrelAge, getBlendAgeStatement, BarrelAge
   - Test files: lib/ttb/__tests__/calcProofGallons.test.ts, standards-of-identity.test.ts, age-calculator.test.ts
 
-Still needs (do not start until explicitly prompted):
-  - Phase 7: TIB records, permit vault, compliance calendar, amendment triggers
-  - R2 credentials in Vercel (infrastructure)
-  - Stripe live keys (infrastructure)
-  - VAPID keys (infrastructure)
-  - History import: Claude Vision PDF extraction layer (manual wizard is done)
+### 2026-05-08 — Phase 7: TIB Records, Compliance Calendar, History Import, R2 Signed URLs
+Added:
+  - Migration 20260508900000: dsp_counterparties, tib_records (with proof_gallons GENERATED ALWAYS AS stored), dsp_documents, amendment_alerts tables — all RLS using owner_id
+  - Migration 20260508950000: import_source column on ttb_report_periods
+  - lib/ttb/tib-serial.ts: getNextTIBSerial() — auto-increments TIB-YYYY-NNNN serial numbers per distillery/year
+  - lib/ttb/amendment-triggers.ts: fireTrigger() with dedup logic (no duplicate pending alerts per type+relatedId)
+  - lib/ttb/compliance-calendar.ts: generateComplianceDeadlines() — monthly reports, FET semi-monthly, quarterly inventory, semi-annual inventory, permit expirations
+  - GET/POST /api/tib: list + create TIB records with auto serial; fires first_tib_inbound alert on first inbound
+  - GET/PATCH/DELETE /api/tib/[id]: update status/notes; DELETE blocks after 24h
+  - GET/POST/PATCH/DELETE /api/tib/counterparties: TIB trading partner management
+  - GET/POST /api/permits: DSP documents (basic_permit, dsp_registration, operating_bond, tib_bond, etc.); fires permit_expiring alert within 90 days
+  - PATCH/DELETE /api/permits/[id]: update permit; re-fires expiry alert on expiration_date change
+  - GET/PATCH /api/compliance/amendment-alerts: list alerts (count=true mode for badge); acknowledge/resolve actions
+  - GET /api/compliance/calendar: generates ComplianceDeadline[] with status (filed/overdue/due_soon/upcoming)
+  - GET /api/compliance/calendar/export.ics: ICS calendar export for all compliance deadlines (12 months)
+  - POST /api/compliance/import-history/extract: multipart PDF upload → Claude Haiku 4.5 vision extraction → structured JSON
+  - GET/POST /api/compliance/import-history: list periods + bulk upsert with import_source=historical_import
+  - GET /api/compliance/inventory/[id]/pdf: signed R2 URL redirect for attestation PDFs
+  - app/(app)/compliance/permits/page.tsx: 3-tab page (Documents, Counterparties, Alerts)
+  - app/(app)/compliance/calendar/page.tsx: deadline list with filter + .ics export button
+  - app/(app)/compliance/import-history/page.tsx: PDF extract tab + manual entry tab
+  - Sidebar: added /compliance/calendar (Cal. Deadlines), /compliance/permits (Permits) nav items; red alert badge on Compliance item using amendment_alerts count API
+  - compliance/page.tsx: import history banner when 0 ttb_report_periods rows on file
+  - BarrelDetailClient.tsx: TIB history card in right column (loads from /api/tib?barrel_id=X)
+  - lib/ttb/index.ts: exports getNextTIBSerial, fireTrigger, generateComplianceDeadlines, ComplianceDeadline
+  - TypeScript: 0 errors
+
+Platform is now feature-complete for TTB compliance Phase 7.
+
+Pending (infrastructure, not code):
+  - R2 credentials in Vercel
+  - Stripe live keys
+  - VAPID keys
+  - Apply migrations 20260508900000 + 20260508950000 in Supabase SQL editor

@@ -37,6 +37,8 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
   const [events, setEvents] = useState<BarrelEvent[]>([])
   const [showEventForm, setShowEventForm] = useState(false)
   const [eventSaving, setEventSaving] = useState(false)
+  const [tibRecords, setTibRecords] = useState<Array<{ id: string; serial_number: string; direction: string; counterparty_name: string; counterparty_dsp_number: string; spirits_type: string; wine_gallons: number; proof: number; proof_gallons: number; transfer_date: string; status: string }>>([])
+  const [tibLoading, setTibLoading] = useState(false)
   const [eventForm, setEventForm] = useState({
     event_type: 'loss' as typeof EVENT_TYPES[number],
     wine_gallons: '',
@@ -73,6 +75,17 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
       .then((d) => setEvents(Array.isArray(d) ? d : []))
       .catch(() => {})
   }, [barrel.id])
+
+  // Load TIB records for this barrel
+  useEffect(() => {
+    if (!barrel.distillery_id) return
+    setTibLoading(true)
+    fetch(`/api/tib?distillery_id=${barrel.distillery_id}&barrel_id=${barrel.id}`)
+      .then((r) => r.json())
+      .then((d) => setTibRecords(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setTibLoading(false))
+  }, [barrel.id, barrel.distillery_id])
 
   const ageMonths = getBarrelAgeMonths(barrel.entry_date)
   const angelsShare = estimateAngelsShare(ageMonths, barrel.warehouse_tier)
@@ -346,6 +359,36 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
               </div>
             )}
           </Card>
+
+          {/* TIB Transfer History */}
+          {(tibRecords.length > 0 || tibLoading) && (
+            <Card>
+              <h3 className="text-sm font-medium mb-3">TIB Transfer History</h3>
+              {tibLoading && <p className="text-xs text-[var(--color-text-muted)]">Loading transfers…</p>}
+              {tibRecords.length === 0 && !tibLoading && <p className="text-xs text-[var(--color-text-muted)]">No TIB transfers on record for this barrel.</p>}
+              <div className="space-y-2">
+                {tibRecords.map((tib) => (
+                  <div key={tib.id} className="text-xs py-1.5 border-b border-[var(--color-border)] last:border-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium font-mono text-[var(--color-text)]">{tib.serial_number}</span>
+                      <span className={`px-1.5 py-0.5 rounded ${tib.direction === 'inbound' ? 'bg-green-500/10 text-green-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                        {tib.direction}
+                      </span>
+                    </div>
+                    <div className="text-[var(--color-text-muted)] mt-0.5">
+                      {tib.direction === 'inbound' ? 'From' : 'To'}: {tib.counterparty_name} ({tib.counterparty_dsp_number})
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5 font-mono text-[var(--color-text-muted)]">
+                      <span>{tib.wine_gallons} WG</span>
+                      <span>{tib.proof}°</span>
+                      <span>{tib.proof_gallons} PG</span>
+                      <span>{formatDate(tib.transfer_date)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* TTB Event Log */}
           <Card>

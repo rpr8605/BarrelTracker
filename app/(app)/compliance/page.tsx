@@ -65,15 +65,19 @@ export default function CompliancePage() {
 
   const months = getMonths()
 
+  const [showImportBanner, setShowImportBanner] = useState(false)
+
   const load = useCallback(async (id: string) => {
-    const [snaps, gaugRes, prodRes, procRes, attRes, rptRes] = await Promise.all([
+    const [snaps, gaugRes, prodRes, procRes, attRes, rptRes, histRes] = await Promise.all([
       fetch(`/api/compliance/snapshots?distillery_id=${id}`).then((r) => r.json()),
       fetch(`/api/compliance/gauge?distillery_id=${id}`).then((r) => r.json()),
       fetch(`/api/compliance/production?distillery_id=${id}`).then((r) => r.json()),
       fetch(`/api/compliance/processing?distillery_id=${id}`).then((r) => r.json()),
       fetch(`/api/compliance/inventory?distillery_id=${id}`).then((r) => r.json()),
       createClient().from('ttb_reports').select('*').eq('distillery_id', id).order('report_month', { ascending: false }).then(({ data }) => data ?? []),
+      fetch(`/api/compliance/import-history?distillery_id=${id}`).then((r) => r.json()),
     ])
+    if ((histRes?.count ?? 0) === 0) setShowImportBanner(true)
     setSnapshots(Array.isArray(snaps) ? snaps : [])
     setGaugeRecords(Array.isArray(gaugRes) ? gaugRes : [])
     setProductionLogs(Array.isArray(prodRes) ? prodRes : [])
@@ -224,6 +228,19 @@ export default function CompliancePage() {
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
       <OverdueBanner distilleryId={distilleryId} />
+      {showImportBanner && (
+        <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 flex items-start justify-between gap-3">
+          <div className="text-sm text-blue-400">
+            <p className="font-medium">No historical filings on file</p>
+            <p className="text-xs mt-0.5">Import prior-year TTB reports so continuity checks start from accurate balances.</p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <a href="/compliance/import-history" className="text-xs px-2.5 py-1.5 rounded-md bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all">Import history</a>
+            <button onClick={() => setShowImportBanner(false)} className="text-xs text-blue-400/60 hover:text-blue-400">✕</button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>

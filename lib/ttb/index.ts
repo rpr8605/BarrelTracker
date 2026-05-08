@@ -35,3 +35,8 @@ export type { ValidationResult } from './standards-of-identity'
 
 export { calculateBarrelAge, getBlendAgeStatement } from './age-calculator'
 export type { BarrelAge } from './age-calculator'
+
+export { getNextTIBSerial } from './tib-serial'
+export { fireTrigger } from './amendment-triggers'
+export { generateComplianceDeadlines } from './compliance-calendar'
+export type { ComplianceDeadline } from './compliance-calendar'

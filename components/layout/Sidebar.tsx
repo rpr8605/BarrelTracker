@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { DistillerySwitcher } from './DistillerySwitcher'
 
@@ -16,7 +17,9 @@ const nav = [
   { href: '/production', label: 'Production', icon: '⟿' },
   { href: '/processing', label: 'Processing', icon: '⊡' },
   { href: '/sponsorships', label: 'Sponsorships', icon: '★' },
-  { href: '/compliance', label: 'Compliance', icon: '✓' },
+  { href: '/compliance', label: 'Compliance', icon: '✓', alertKey: true },
+  { href: '/compliance/calendar', label: 'Cal. Deadlines', icon: '◷' },
+  { href: '/compliance/permits', label: 'Permits', icon: '◉' },
   { href: '/tax', label: 'Excise Tax', icon: '⊕' },
   { href: '/products', label: 'Products', icon: '⊞' },
   { href: '/analytics', label: 'Analytics', icon: '↗' },
@@ -35,6 +38,15 @@ export function Sidebar({
   activeDistilleryId?: string
 }) {
   const path = usePathname()
+  const [alertCount, setAlertCount] = useState(0)
+
+  useEffect(() => {
+    if (!activeDistilleryId) return
+    fetch(`/api/compliance/amendment-alerts?distillery_id=${activeDistilleryId}&status=pending&count=true`)
+      .then((r) => r.json())
+      .then((d) => setAlertCount(d.count ?? 0))
+      .catch(() => {})
+  }, [activeDistilleryId])
 
   return (
     <aside className="hidden md:flex flex-col w-56 min-h-screen border-r border-[var(--color-border)] bg-[var(--color-surface)] p-4">
@@ -49,19 +61,24 @@ export function Sidebar({
       </div>
 
       <nav className="flex-1 space-y-0.5">
-        {nav.map(({ href, label, icon }) => (
+        {nav.map(({ href, label, icon, alertKey }) => (
           <Link
             key={href}
             href={href}
             className={cn(
               'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all min-h-[44px]',
-              path === href
+              path === href || (href !== '/compliance' && path.startsWith(href + '/'))
                 ? 'bg-primary/10 text-primary font-medium'
                 : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text)]'
             )}
           >
             <span className="w-4 text-center">{icon}</span>
-            {label}
+            <span className="flex-1">{label}</span>
+            {alertKey && alertCount > 0 && (
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+                {alertCount > 9 ? '9+' : alertCount}
+              </span>
+            )}
           </Link>
         ))}
       </nav>
