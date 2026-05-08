@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const admin = createServiceClient()
   const { data, error } = await admin.from('account_transfers').insert({
     ...body,
-    transaction_date: body.transaction_date ?? body.transfer_date,
+    transaction_date: body.transaction_date ?? new Date().toISOString().split('T')[0],
     created_by: user.id,
   }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

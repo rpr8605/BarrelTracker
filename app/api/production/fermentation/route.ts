@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const abv = body.start_og && body.end_fg ? Math.round((body.start_og - body.end_fg) * 131.25 * 100) / 100 : null
   const { data, error } = await admin.from('fermentation_logs').insert({
     ...body,
-    transaction_date: body.transaction_date ?? body.start_date,
+    transaction_date: body.transaction_date ?? new Date().toISOString().split('T')[0],
     estimated_abv: abv,
     created_by: user.id,
   }).select().single()

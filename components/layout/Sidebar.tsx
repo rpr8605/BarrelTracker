@@ -13,8 +13,12 @@ const nav = [
   { href: '/profile', label: 'Taste Profile', icon: '◈' },
   { href: '/suggestions', label: 'Suggestions', icon: '✦' },
   { href: '/batches', label: 'Batches', icon: '▣' },
-  { href: '/sponsorships', label: 'Sponsorships', icon: '✦' },
+  { href: '/production', label: 'Production', icon: '⟿' },
+  { href: '/processing', label: 'Processing', icon: '⊡' },
+  { href: '/sponsorships', label: 'Sponsorships', icon: '★' },
   { href: '/compliance', label: 'Compliance', icon: '✓' },
+  { href: '/tax', label: 'Excise Tax', icon: '⊕' },
+  { href: '/products', label: 'Products', icon: '⊞' },
   { href: '/analytics', label: 'Analytics', icon: '↗' },
   { href: '/settings', label: 'Settings', icon: '⚙' },
 ]

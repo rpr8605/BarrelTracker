@@ -33,6 +33,8 @@ export async function POST(req: NextRequest) {
     gauged_at, temperature_f, proof, wine_gallons, proof_gallons, gauge_officer,
     cooperage_code: cooperage_code || null, package_id: package_id || null,
     gross_weight_lbs: gross_weight_lbs || null, notes: notes || null, created_by: user.id,
+    transaction_date: body.transaction_date ?? new Date().toISOString().split('T')[0],
+    entry_timestamp: new Date().toISOString(),
   }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)

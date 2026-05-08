@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   if (!body.distillery_id || !body.log_date || !body.product_name || !body.leakers_count)
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   const admin = createServiceClient()
-  const { data, error } = await admin.from('leaker_area_log').insert({ ...body, transaction_date: body.transaction_date ?? body.log_date, created_by: user.id }).select().single()
+  const { data, error } = await admin.from('leaker_area_log').insert({ ...body, transaction_date: body.transaction_date ?? new Date().toISOString().split('T')[0], created_by: user.id }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
 }

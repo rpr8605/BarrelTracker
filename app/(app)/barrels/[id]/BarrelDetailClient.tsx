@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase'
 import { formatDate, formatMonths } from '@/lib/utils'
 import { getBarrelAgeMonths, estimateAngelsShare } from '@/lib/tags'
 import { isNFCSupported, writeNFCTag } from '@/lib/nfc'
+import { calculateBarrelAge } from '@/lib/ttb/age-calculator'
 import { GeoLocation } from '@/components/barrels/GeoLocation'
 import { useCanWrite } from '@/lib/role-context'
 import { TTB_EVENT_LABELS, formatWineGal, formatProofGal, calcProofGallons } from '@/lib/ttb'
@@ -75,6 +76,7 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
 
   const ageMonths = getBarrelAgeMonths(barrel.entry_date)
   const angelsShare = estimateAngelsShare(ageMonths, barrel.warehouse_tier)
+  const barrelAge = barrel.entry_date ? calculateBarrelAge(barrel.entry_date) : null
 
   async function markReady() {
     const supabase = createClient()
@@ -214,6 +216,17 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
                     </div>
                   ) : null)}
                 </div>
+
+                {barrelAge && (barrelAge.mandatory_age_disclosure || barrelAge.under_2_years) && (
+                  <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[var(--color-border)]">
+                    {barrelAge.mandatory_age_disclosure && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400">Age statement required</span>
+                    )}
+                    {barrelAge.under_2_years && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400">Cannot use &apos;Straight&apos; designation</span>
+                    )}
+                  </div>
+                )}
 
                 {barrel.tags && barrel.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 pt-2 border-t border-[var(--color-border)]">

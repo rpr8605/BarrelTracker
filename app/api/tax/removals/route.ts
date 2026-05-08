@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     tax_period: removalDateToPeriodKey(new Date(removal_date)),
     bottling_record_id: bottling_record_id ?? null,
     notes: notes ?? null,
-    transaction_date: removal_date,
+    transaction_date: body.transaction_date ?? new Date().toISOString().split('T')[0],
     created_by: user.id,
   }).select().single()
 

@@ -90,7 +90,7 @@ export function calcFET(proofGallons: number, ytdProofGallons: number): number {
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
 export function calcProofGallons(wineGallons: number, proof: number): number {
-  return Math.round(wineGallons * (proof / 100) * 1000) / 1000
+  return Math.round(wineGallons * (proof / 100) * 10000) / 10000
 }
 
 export function eventSign(eventType: string): 1 | -1 {

@@ -29,3 +29,9 @@ export { validateMonthlyBalances } from './balance-validator'
 
 export type { InventoryItem, AttestationPDFData } from './inventory-pdf'
 export { generateAttestationPDF } from './inventory-pdf'
+
+export { validateStandardOfIdentity } from './standards-of-identity'
+export type { ValidationResult } from './standards-of-identity'
+
+export { calculateBarrelAge, getBlendAgeStatement } from './age-calculator'
+export type { BarrelAge } from './age-calculator'

@@ -581,3 +581,35 @@ TypeScript status: clean (1 pre-existing test error in tests/auth.spec.ts, unrel
 Pending migration apply: 20260508300000 and 20260508400000 need to be run in Supabase SQL editor — Supabase CLI has persistent migration state mismatch with 20260508 bare timestamp
 
 Ready for: Tier 2 schema refactor — 7 new tables replacing flat production_logs/processing_logs
+
+### 2026-05-08 — Bug fixes + Phase 6 (Standards of Identity, COLA, Formula)
+Fixed:
+  - calcProofGallons now rounds to 4 decimal places (was 3) — lib/ttb.ts
+  - inventory total_wine_gallons now summed from items (was hardcoded 0) — app/api/compliance/inventory/route.ts
+  - compliance/generate route now references ttb_report_periods (was ttb_reports) — app/api/compliance/generate/route.ts
+  - transaction_date defaults server-side to today on all 9 record-save routes (was defaulting to event date)
+  - tsconfig.json: excluded __tests__/** and tests/** so test runner globals don't error tsc
+Added:
+  - Sidebar nav: /production, /processing, /tax, /products added to Sidebar.tsx
+  - GET /api/compliance/inventory?populate=true returns live barrel snapshot as inventory_data
+  - PATCH /api/compliance/report-periods: marks individual form (5110.40/11/28/5000.24) as submitted with confirmation number
+  - Migration 20260508700000: per-form status columns on ttb_report_periods
+  - app/api/cron/zero-activity-check/route.ts: emails distilleries with zero activity who haven't filed
+  - vercel.json: cron for zero-activity-check (7th of month at 14:00 UTC)
+  - lib/ttb/standards-of-identity.ts: full IDENTITY_RULES engine + validateStandardOfIdentity with CFR citations
+  - Standards validation wired into POST /api/barrels (returns 422 with violations array on identity violation)
+  - lib/ttb/age-calculator.ts: calculateBarrelAge, getBlendAgeStatement with mandatory disclosure logic
+  - Barrel detail page: age disclosure badges (amber) for mandatory_age_disclosure and under_2_years
+  - Migration 20260508800000: cola_records + formula_records tables with RLS
+  - CRUD API: /api/products/cola, /api/products/cola/[id], /api/products/formula, /api/products/formula/[id]
+  - Formula PATCH: creates new version when approved formula has ingredients changed
+  - app/(app)/products/page.tsx: COLA + Formula tabs with checklist, status management, version modal
+  - lib/ttb/index.ts: exports validateStandardOfIdentity, ValidationResult, calculateBarrelAge, getBlendAgeStatement, BarrelAge
+  - Test files: lib/ttb/__tests__/calcProofGallons.test.ts, standards-of-identity.test.ts, age-calculator.test.ts
+
+Still needs (do not start until explicitly prompted):
+  - Phase 7: TIB records, permit vault, compliance calendar, amendment triggers
+  - R2 credentials in Vercel (infrastructure)
+  - Stripe live keys (infrastructure)
+  - VAPID keys (infrastructure)
+  - History import: Claude Vision PDF extraction layer (manual wizard is done)

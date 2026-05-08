@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const totalGrain = body.grains?.reduce((s: number, g: { quantity_lbs: number }) => s + (g.quantity_lbs ?? 0), 0) ?? null
   const { data, error } = await admin.from('mash_batches').insert({
     ...body,
-    transaction_date: body.transaction_date ?? body.mash_date,
+    transaction_date: body.transaction_date ?? new Date().toISOString().split('T')[0],
     total_grain_lbs: totalGrain,
     created_by: user.id,
   }).select().single()

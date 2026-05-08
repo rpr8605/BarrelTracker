@@ -28,17 +28,16 @@ export async function POST(req: NextRequest) {
     bottled_this_month: (batchesRes.data || []).length,
   }
 
-  let generatedData = {}
+  let generatedData: Record<string, unknown> = {}
   try {
     generatedData = await generateComplianceReport(distillery_id, reportData)
   } catch { /* AI not configured */ }
 
-  const { data: report, error } = await admin.from('ttb_reports').upsert({
+  const { data: report, error } = await admin.from('ttb_report_periods').upsert({
     distillery_id,
     report_month: month,
-    report_data: generatedData,
+    form_5110_40_values: generatedData,
     status: 'draft',
-    generated_at: new Date().toISOString(),
   }, { onConflict: 'distillery_id,report_month' }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

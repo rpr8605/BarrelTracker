@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await admin.from('distillation_logs').insert({
     ...body,
     spirits_produced_proof_gallons: totalPG,
-    transaction_date: body.transaction_date ?? body.distillation_date,
+    transaction_date: body.transaction_date ?? new Date().toISOString().split('T')[0],
     created_by: user.id,
   }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

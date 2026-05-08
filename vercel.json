@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/tax-deadline-reminder",
       "schedule": "0 14 12,26 * *"
+    },
+    {
+      "path": "/api/cron/zero-activity-check",
+      "schedule": "0 14 7 * *"
     }
   ]
 }
