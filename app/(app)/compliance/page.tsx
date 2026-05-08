@@ -13,6 +13,7 @@ import {
   FET_RATE_REDUCED, FET_CBMA_THRESHOLD, daysUntilDue,
 } from '@/lib/ttb'
 import { formatDate } from '@/lib/utils'
+import { OverdueBanner } from '@/components/compliance/OverdueBanner'
 import type { ComplianceSnapshot, TtbReport, GaugeRecord, ProductionLog, ProcessingLog, InventoryAttestation } from '@/types/database'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -198,14 +199,22 @@ export default function CompliancePage() {
   }
 
   // ── Inventory attestation form ───────────────────────────────────────────────
-  const [invForm, setInvForm] = useState({ inventory_type: 'quarterly_storage', period_label: '', inventory_date: new Date().toISOString().split('T')[0], total_proof_gallons: '', barrel_count: '', container_count: '', attested_by_name: '' })
+  const [invForm, setInvForm] = useState({ inventory_type: 'quarterly_storage', period_label: '', inventory_date: new Date().toISOString().split('T')[0], total_proof_gallons: '', barrel_count: '', container_count: '', attested_by_name: '', signed_by_title: '' })
   const [invSaving, setInvSaving] = useState(false)
   const [showInvForm, setShowInvForm] = useState(false)
 
   async function saveInventory(attest: boolean) {
     if (!distilleryId) return
     setInvSaving(true)
-    const data = await fetch('/api/compliance/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ distillery_id: distilleryId, inventory_type: invForm.inventory_type, period_label: invForm.period_label, inventory_date: invForm.inventory_date, total_proof_gallons: parseFloat(invForm.total_proof_gallons) || 0, barrel_count: invForm.barrel_count ? parseInt(invForm.barrel_count) : null, container_count: invForm.container_count ? parseInt(invForm.container_count) : null, attested_by_name: invForm.attested_by_name, attest }) }).then((r) => r.json())
+    const res = await fetch('/api/compliance/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ distillery_id: distilleryId, inventory_type: invForm.inventory_type, period_label: invForm.period_label, inventory_date: invForm.inventory_date, total_proof_gallons: parseFloat(invForm.total_proof_gallons) || 0, barrel_count: invForm.barrel_count ? parseInt(invForm.barrel_count) : null, container_count: invForm.container_count ? parseInt(invForm.container_count) : null, attested_by_name: invForm.attested_by_name, signed_by_title: invForm.signed_by_title, attest }) }).then((r) => r.json())
+    // If PDF bytes returned, trigger download
+    if (attest && res.pdf_bytes) {
+      const blob = new Blob([Uint8Array.from(atob(res.pdf_bytes), (c) => c.charCodeAt(0))], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href = url; a.download = `inventory-attestation-${invForm.inventory_date}.pdf`; a.click()
+      URL.revokeObjectURL(url)
+    }
+    const data = res
     if (data.id) { setAttestations((p) => [data, ...p]); setShowInvForm(false) }
     setInvSaving(false)
   }
@@ -214,6 +223,7 @@ export default function CompliancePage() {
 
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
+      <OverdueBanner distilleryId={distilleryId} />
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -552,19 +562,22 @@ export default function CompliancePage() {
                 <Input label="Total proof gallons *" type="number" value={invForm.total_proof_gallons} onChange={(e) => setInvForm((f) => ({ ...f, total_proof_gallons: e.target.value }))} />
                 <Input label="Barrel count" type="number" value={invForm.barrel_count} onChange={(e) => setInvForm((f) => ({ ...f, barrel_count: e.target.value }))} />
               </div>
-              <Input label="Proprietor name *" value={invForm.attested_by_name} onChange={(e) => setInvForm((f) => ({ ...f, attested_by_name: e.target.value }))} placeholder="Full legal name of proprietor" />
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Full legal name *" value={invForm.attested_by_name} onChange={(e) => setInvForm((f) => ({ ...f, attested_by_name: e.target.value }))} placeholder="Full legal name" />
+                <Input label="Title *" value={invForm.signed_by_title} onChange={(e) => setInvForm((f) => ({ ...f, signed_by_title: e.target.value }))} placeholder="e.g. Proprietor, DSP Manager" />
+              </div>
 
-              {invForm.attested_by_name && invForm.total_proof_gallons && (
+              {invForm.attested_by_name && invForm.signed_by_title && invForm.total_proof_gallons && (
                 <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3 text-xs text-[var(--color-text-muted)] leading-relaxed">
                   <p className="font-medium text-[var(--color-text)] mb-1">Penalties of Perjury Statement (27 CFR 19.45)</p>
-                  <p>I, <strong>{invForm.attested_by_name}</strong>, declare under penalty of perjury that I have examined this inventory, and that to the best of my knowledge and belief, it is true, correct, and complete. I understand that providing false information to the TTB may subject me to criminal penalties under 18 U.S.C. § 1001 and civil penalties under 26 U.S.C. § 5603.</p>
-                  <p className="mt-1">Inventory date: <strong>{invForm.inventory_date}</strong> · Total proof gallons: <strong>{invForm.total_proof_gallons}</strong></p>
+                  <p>Under penalties of perjury, I declare that I have examined this inventory, and to the best of my knowledge and belief it is true, correct, and complete as required by 27 CFR Part 19.</p>
+                  <p className="mt-2">Signed: <strong>{invForm.attested_by_name}</strong>, <strong>{invForm.signed_by_title}</strong> · Date: <strong>{invForm.inventory_date}</strong> · Total proof gallons: <strong>{invForm.total_proof_gallons}</strong></p>
                 </div>
               )}
 
               <div className="flex gap-3">
                 <Button variant="secondary" onClick={() => saveInventory(false)} loading={invSaving}>Save as draft</Button>
-                <Button onClick={() => saveInventory(true)} loading={invSaving} disabled={!invForm.attested_by_name || !invForm.total_proof_gallons || !invForm.period_label}>Sign & attest</Button>
+                <Button onClick={() => saveInventory(true)} loading={invSaving} disabled={!invForm.attested_by_name || !invForm.signed_by_title || !invForm.total_proof_gallons || !invForm.period_label}>Sign & attest</Button>
               </div>
             </Card>
           )}
@@ -614,6 +627,14 @@ export default function CompliancePage() {
           </div>
 
           {formData && <FormView data={formData} onReconcile={reconcile} reconciling={reconciling} onMarkFiled={markSnapshotFiled} snapshots={snapshots} />}
+
+          <div className="pt-2 border-t border-[var(--color-border)]">
+            <p className="text-xs text-[var(--color-text-muted)]">
+              Joining mid-year or migrating from paper?{' '}
+              <a href="/compliance/balance-wizard" className="text-primary underline">Import historical ending balances</a>{' '}
+              so continuity checks work from your first month.
+            </p>
+          </div>
         </div>
       )}
 
