@@ -15,18 +15,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (original.is_amended) return NextResponse.json({ error: 'Cannot amend an already-amended record' }, { status: 400 })
 
   const body = await req.json()
-  const { wine_gallons, proof, temperature_f, notes, employee_name, employee_title, reason } = body
-
+  const { wine_gallons, proof, temperature_f, notes, gauge_officer, reason } = body
   if (!reason) return NextResponse.json({ error: 'reason is required when amending a gauge record' }, { status: 400 })
 
   const wg = wine_gallons ?? original.wine_gallons
   const p = proof ?? original.proof
   const pg = calcProofGallons(wg, p)
 
-  // Mark original as amended (only field update ever allowed)
+  // Mark original as amended — service client bypasses the INSERT-only RLS
   await admin.from('gauge_records').update({ is_amended: true }).eq('id', originalId)
 
-  // Create corrected record
   const { data: amended, error } = await admin.from('gauge_records').insert({
     distillery_id: original.distillery_id,
     barrel_id: original.barrel_id,
@@ -43,9 +41,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     gross_weight_lbs: original.gross_weight_lbs,
     cooperage_code: original.cooperage_code,
     package_id: original.package_id,
-    employee_name: employee_name ?? original.employee_name,
-    employee_title: employee_title ?? original.employee_title,
-    attested_by: user.id,
+    gauge_officer: gauge_officer ?? original.gauge_officer,
+    created_by: user.id,
     is_amended: false,
     amends_gauge_id: originalId,
     notes: `AMENDMENT of ${originalId}: ${reason}${notes ? ` — ${notes}` : ''}`,
