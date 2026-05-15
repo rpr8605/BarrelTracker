@@ -74,6 +74,8 @@ export async function saveStep2(data: DSPRegistrationData) {
       mailing_zip: data.mailing_zip,
       operations_type: data.operations_type ?? [],
       spirits_categories: data.spirits_categories ?? [],
+      is_ndp: data.is_ndp ?? false,
+      ndp_source_details: data.ndp_source_details,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'distillery_id' },

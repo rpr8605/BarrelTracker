@@ -61,6 +61,8 @@ export interface DSPRegistrationData {
   principal_name?: string
   principal_title?: string
   operations_type: string[]
+  is_ndp?: boolean
+  ndp_source_details?: string
   street_address?: string
   city?: string
   state?: string

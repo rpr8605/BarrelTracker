@@ -50,7 +50,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const preferred = cookieStore.get('active_distillery')?.value
   const active = accessible.find((d) => d.id === preferred) || accessible[0]
 
-  // Onboarding guard + demo detection
+  // Demo detection (onboarding wizard temporarily disabled — users skip straight to app).
+  // Re-enable by setting NEXT_PUBLIC_ONBOARDING_ENABLED=1 in env.
+  const onboardingEnabled = process.env.NEXT_PUBLIC_ONBOARDING_ENABLED === '1'
   let isDemo = false
   if (active) {
     const { data: distRow } = await admin
@@ -60,7 +62,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .single()
     if (distRow) {
       isDemo = !!distRow.is_demo
-      if (!distRow.is_demo && !distRow.onboarding_completed) {
+      if (onboardingEnabled && !distRow.is_demo && !distRow.onboarding_completed) {
         const step = Math.max(1, Math.min(5, distRow.onboarding_step ?? 1))
         redirect(`/onboarding/${step}`)
       }

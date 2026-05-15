@@ -9,6 +9,7 @@ import {
   SelectField,
   CheckboxGroup,
   Toggle,
+  TextArea,
   NavRow,
 } from '../OnboardingShell'
 import { ENTITY_TYPES, OPERATIONS_TYPES, US_STATES, type DSPRegistrationData } from '@/lib/onboarding/schema'
@@ -44,6 +45,8 @@ export function Step2DSPRegistration({ initial }: { initial?: Partial<DSPRegistr
     plant_name: initial?.plant_name ?? '',
     trade_name: initial?.trade_name ?? '',
     spirits_categories: initial?.spirits_categories ?? [],
+    is_ndp: initial?.is_ndp ?? false,
+    ndp_source_details: initial?.ndp_source_details ?? '',
   })
 
   return (
@@ -101,6 +104,24 @@ export function Step2DSPRegistration({ initial }: { initial?: Partial<DSPRegistr
           value={d.operations_type}
           onChange={(v) => setD({ ...d, operations_type: v })}
         />
+
+        <div className="border-t border-white/5 pt-4 space-y-3">
+          <Toggle
+            label="Non-Distilling Producer (NDP)"
+            value={!!d.is_ndp}
+            onChange={(v) => setD({ ...d, is_ndp: v })}
+            hint="You source distillate from another DSP and bottle, blend, or age it yourself without distilling. Common for sourced bourbon brands."
+          />
+          {d.is_ndp && (
+            <TextArea
+              label="Distillate sourcing details"
+              value={d.ndp_source_details}
+              onChange={(v) => setD({ ...d, ndp_source_details: v })}
+              hint="Where you source from — e.g., MGP Indiana, Bardstown Bourbon Company contract distillation. Used for label disclosure compliance (27 CFR 5.36(d))."
+              rows={3}
+            />
+          )}
+        </div>
       </FormCard>
 
       <div className="mt-4" />
