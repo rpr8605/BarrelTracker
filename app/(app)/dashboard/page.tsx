@@ -39,7 +39,7 @@ export default async function DashboardPage() {
     .slice(0, 6)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-tour="dashboard-overview">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <div className="text-2xl font-medium text-[var(--color-text)]">{allBarrels.length}</div>

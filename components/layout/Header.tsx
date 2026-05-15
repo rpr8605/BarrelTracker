@@ -1,5 +1,6 @@
 'use client'
 import { usePathname } from 'next/navigation'
+import { AlertBell } from './AlertBell'
 
 const titles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -26,7 +27,10 @@ export function Header({ distilleryName }: { distilleryName?: string }) {
         <h1 className="font-medium text-[var(--color-text)]">{title}</h1>
         {distilleryName && <p className="text-xs text-[var(--color-text-muted)]">{distilleryName}</p>}
       </div>
-      <span className="text-xl font-medium text-primary">Still</span>
+      <div className="flex items-center gap-2">
+        <AlertBell />
+        <span className="text-xl font-medium text-primary">Still</span>
+      </div>
     </header>
   )
 }

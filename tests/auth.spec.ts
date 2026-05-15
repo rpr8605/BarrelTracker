@@ -69,8 +69,8 @@ async function fillPassword(page: Page, password: string) {
 
 async function expectDashboard(page: Page) {
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 })
-  // The word "Still" must appear (brand name in sidebar or header)
-  await expect(page.getByText('Still').first()).toBeVisible({ timeout: 15_000 })
+  // Wait for any "Dashboard" text — h1 on mobile, sidebar nav link on desktop.
+  await expect(page.locator(':text("Dashboard"):visible').first()).toBeVisible({ timeout: 15_000 })
 }
 
 // ─── Demo Mode ───────────────────────────────────────────────────────────────
@@ -184,7 +184,7 @@ for (const user of USERS) {
 
       const found = await Promise.any(
         user.distilleries.map((d) =>
-          page.getByText(d, { exact: false }).waitFor({ timeout: 10_000 })
+          page.locator(`:text("${d}"):visible`).first().waitFor({ timeout: 10_000 })
         )
       ).then(() => true).catch(() => false)
 

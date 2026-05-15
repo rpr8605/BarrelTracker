@@ -4,10 +4,11 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { DistillerySwitcher } from './DistillerySwitcher'
+import { TourTrigger } from '@/components/walkthrough/TourTrigger'
 
-const nav = [
-  { href: '/dashboard', label: 'Dashboard', icon: '⌂' },
-  { href: '/barrels', label: 'Barrels', icon: '⬡' },
+const nav: Array<{ href: string; label: string; icon: string; alertKey?: boolean; tour?: string }> = [
+  { href: '/dashboard', label: 'Dashboard', icon: '⌂', tour: 'dashboard-nav' },
+  { href: '/barrels', label: 'Barrels', icon: '⬡', tour: 'barrels-nav' },
   { href: '/search', label: 'Search', icon: '◎' },
   { href: '/warehouse', label: 'Warehouse', icon: '▦' },
   { href: '/blend', label: 'Blending', icon: '⟳' },
@@ -16,8 +17,8 @@ const nav = [
   { href: '/batches', label: 'Batches', icon: '▣' },
   { href: '/production', label: 'Production', icon: '⟿' },
   { href: '/processing', label: 'Processing', icon: '⊡' },
-  { href: '/sponsorships', label: 'Sponsorships', icon: '★' },
-  { href: '/compliance', label: 'Compliance', icon: '✓', alertKey: true },
+  { href: '/sponsorships', label: 'Sponsorships', icon: '★', tour: 'sponsorship-tiers' },
+  { href: '/compliance', label: 'Compliance', icon: '✓', alertKey: true, tour: 'ttb-compliance-nav' },
   { href: '/compliance/calendar', label: 'Cal. Deadlines', icon: '◷' },
   { href: '/compliance/permits', label: 'Permits', icon: '◉' },
   { href: '/tax', label: 'Excise Tax', icon: '⊕' },
@@ -61,10 +62,11 @@ export function Sidebar({
       </div>
 
       <nav className="flex-1 space-y-0.5">
-        {nav.map(({ href, label, icon, alertKey }) => (
+        {nav.map(({ href, label, icon, alertKey, tour }) => (
           <Link
             key={href}
             href={href}
+            data-tour={tour}
             className={cn(
               'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all min-h-[44px]',
               path === href || (href !== '/compliance' && path.startsWith(href + '/'))
@@ -83,8 +85,13 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="pt-4 border-t border-[var(--color-border)]">
-        <Link href="/barrels/new" className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-all min-h-[44px]">
+      <div className="pt-4 border-t border-[var(--color-border)] space-y-2">
+        <TourTrigger />
+        <Link
+          href="/barrels/new"
+          data-tour="add-barrel-button"
+          className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-all min-h-[44px]"
+        >
           + Log Barrel
         </Link>
       </div>

@@ -77,9 +77,11 @@ export default function BlendPage() {
           <h1 className="font-medium text-lg">Blending</h1>
           <p className="text-sm text-[var(--color-text-muted)]">{barrels.length} barrels available</p>
         </div>
-        <Button onClick={generate} loading={generating} disabled={barrels.length === 0}>
-          Generate recommendations
-        </Button>
+        <span data-tour="blend-ai-button">
+          <Button onClick={generate} loading={generating} disabled={barrels.length === 0}>
+            Generate recommendations
+          </Button>
+        </span>
       </div>
 
       {blends.length > 0 && (

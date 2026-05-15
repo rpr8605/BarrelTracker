@@ -84,7 +84,7 @@ export default function BarrelsPage() {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" data-tour="barrel-list-table">
         {loading
           ? Array.from({ length: 6 }).map((_, i) => <BarrelCardSkeleton key={i} />)
           : barrels.map((barrel) => <BarrelCard key={barrel.id} barrel={barrel} />)}

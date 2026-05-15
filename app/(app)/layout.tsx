@@ -3,6 +3,7 @@ import { BottomNav } from '@/components/layout/BottomNav'
 import { Header } from '@/components/layout/Header'
 import { ChatPanel } from '@/components/ai/ChatPanel'
 import { RoleProvider } from '@/lib/role-context'
+import { WalkthroughProvider } from '@/components/walkthrough/WalkthroughProvider'
 import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -49,6 +50,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const preferred = cookieStore.get('active_distillery')?.value
   const active = accessible.find((d) => d.id === preferred) || accessible[0]
 
+  // Onboarding guard + demo detection
+  let isDemo = false
+  if (active) {
+    const { data: distRow } = await admin
+      .from('distilleries')
+      .select('is_demo, onboarding_completed, onboarding_step')
+      .eq('id', active.id)
+      .single()
+    if (distRow) {
+      isDemo = !!distRow.is_demo
+      if (!distRow.is_demo && !distRow.onboarding_completed) {
+        const step = Math.max(1, Math.min(5, distRow.onboarding_step ?? 1))
+        redirect(`/onboarding/${step}`)
+      }
+    }
+  }
+
   // If no distillery resolved, fall back to a placeholder so the shell renders
   const activeName = active?.name ?? 'Still'
   const activeId = active?.id ?? ''
@@ -56,21 +74,29 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <RoleProvider role={activeRole}>
-      <div className="flex min-h-screen bg-[var(--color-bg)]">
-        <Sidebar
-          distilleryName={activeName}
-          allDistilleries={accessible.map((d) => ({ id: d.id, name: d.name }))}
-          activeDistilleryId={activeId}
-        />
-        <div className="flex-1 flex flex-col min-w-0">
-          <Header distilleryName={activeName} />
-          <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6 max-w-7xl w-full mx-auto">
-            {children}
-          </main>
+      <WalkthroughProvider userId={user.id} autoStart={isDemo}>
+        <div className="flex min-h-screen bg-[var(--color-bg)]">
+          <Sidebar
+            distilleryName={activeName}
+            allDistilleries={accessible.map((d) => ({ id: d.id, name: d.name }))}
+            activeDistilleryId={activeId}
+          />
+          <div className="flex-1 flex flex-col min-w-0">
+            <Header distilleryName={activeName} />
+            {isDemo && (
+              <div className="bg-[#BA7517] text-white px-4 py-2 text-xs font-medium text-center">
+                YOU&apos;RE IN DEMO MODE · Data resets every 24 hours · Book a real demo at{' '}
+                <span className="underline">still-consulting.com</span>
+              </div>
+            )}
+            <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6 max-w-7xl w-full mx-auto">
+              {children}
+            </main>
+          </div>
+          <BottomNav />
+          <ChatPanel />
         </div>
-        <BottomNav />
-        <ChatPanel />
-      </div>
+      </WalkthroughProvider>
     </RoleProvider>
   )
 }

@@ -57,6 +57,7 @@ export default function SearchPage() {
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]">◎</span>
         <input
           autoFocus
+          data-tour="smart-search-input"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search barrels, flavors, sources..."
