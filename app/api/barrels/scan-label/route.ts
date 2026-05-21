@@ -1,4 +1,4 @@
-import { anthropic, HAIKU } from '@/lib/anthropic'
+import { anthropic, HAIKU } from '@/lib/ai-router'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 export async function POST(req: Request) {

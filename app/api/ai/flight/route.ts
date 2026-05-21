@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { anthropic, HAIKU } from '@/lib/anthropic'
+import { callAi } from '@/lib/ai-router'
 import { createServiceClient } from '@/lib/supabase-server'
 
 export async function POST(req: NextRequest) {
@@ -34,25 +34,13 @@ export async function POST(req: NextRequest) {
       })
       .join('\n')
 
-    const response = await anthropic.messages.create({
-      model: HAIKU,
-      max_tokens: 300,
-      system: [
-        {
-          type: 'text',
-          text: 'You are a master distiller guiding guests through a tasting experience. Write vivid, accessible descriptions — no jargon. Be warm, poetic, and brief.',
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      messages: [
-        {
-          role: 'user',
-          content: `A guest has selected ${barrels.length} barrels for a tasting flight at ${distilleryName}. The barrels are:\n\n${barrelDescriptions}\n\nWrite a 2-3 sentence tasting flight description that connects the barrels thematically and suggests what to notice in each. Be poetic but accessible.`,
-        },
-      ],
+    const pairingNote = await callAi({
+      task: 'CREATIVE',
+      maxTokens: 300,
+      system: 'You are a master distiller guiding guests through a tasting experience. Write vivid, accessible descriptions — no jargon. Be warm, poetic, and brief.',
+      prompt: `A guest has selected ${barrels.length} barrels for a tasting flight at ${distilleryName}. The barrels are:\n\n${barrelDescriptions}\n\nWrite a 2-3 sentence tasting flight description that connects the barrels thematically and suggests what to notice in each. Be poetic but accessible.`,
     })
 
-    const pairingNote = response.content[0].type === 'text' ? response.content[0].text : ''
     return NextResponse.json({ pairingNote })
   } catch (err) {
     console.error('Flight AI error:', err)

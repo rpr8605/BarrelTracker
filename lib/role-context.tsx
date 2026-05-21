@@ -1,7 +1,7 @@
 'use client'
 import { createContext, useContext } from 'react'
 
-export type UserRole = 'owner' | 'full_access' | 'read_only'
+export type UserRole = 'owner' | 'admin' | 'production_manager' | 'compliance_reviewer' | 'finance_reviewer' | 'consultant' | 'read_only_stakeholder' | 'read_only' | 'full_access'
 
 const RoleContext = createContext<UserRole>('read_only')
 
@@ -15,5 +15,6 @@ export function useRole(): UserRole {
 
 export function useCanWrite(): boolean {
   const role = useRole()
-  return role === 'owner' || role === 'full_access'
+  const writeRoles: UserRole[] = ['owner', 'admin', 'production_manager', 'full_access']
+  return writeRoles.includes(role)
 }

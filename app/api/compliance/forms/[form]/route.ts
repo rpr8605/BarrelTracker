@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { calcProofGallons, spiritsLabel } from '@/lib/ttb'
+import { monthlyReportDueDate } from '@/lib/ttb/business-days'
 
 // Generates pre-filled TTB form data for 5110.40, 5110.11, 5110.28
 // These are not official TTB submissions — they pre-populate numbers
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: { form: string
   const { data: distillery } = await admin.from('distilleries').select('name,dsp_number').eq('id', distilleryId).single()
 
   const periodLabel = periodStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-  const dueDate = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 15)
+  const dueDate = monthlyReportDueDate(periodStart.getFullYear(), periodStart.getMonth() + 1)
     .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 
   if (form === '5110-11') {

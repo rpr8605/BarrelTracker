@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
-import { anthropic, HAIKU } from '@/lib/anthropic'
+import { callAi } from '@/lib/ai-router'
 import { sendEmail } from '@/lib/email'
 import { notifyDistillerySubscribers } from '@/lib/push'
 import { RegulatoryAlertEmail } from '@/emails/RegulatoryAlertEmail'
@@ -22,26 +22,18 @@ interface ClassifierOutput {
 }
 
 async function classify(article: FederalRegisterArticle): Promise<ClassifierOutput> {
-  const response = await anthropic.messages.create({
-    model: HAIKU,
-    max_tokens: 600,
-    system: [
-      {
-        type: 'text',
-        text:
-          'You are a TTB compliance expert for US craft distilleries with DSP permits. Analyze the Federal Register article and determine: (1) Is it relevant to a craft DSP (Distilled Spirits Plant) operator? (2) If yes, provide a plain-language summary (2-3 sentences), any specific action required, the effective date if mentioned, and which permit types are affected. Return JSON only with shape: { "relevant": bool, "summary": string, "action_required": string|null, "effective_date": string|null, "affects_types": string[] }. Use permit types like "DSP", "Winery", "Brewery".',
-        cache_control: { type: 'ephemeral' },
-      },
-    ],
-    messages: [
-      { role: 'user', content: `Title: ${article.title}\n\nAbstract: ${article.abstract || '(none)'}\n\nPublished: ${article.publication_date}` },
-    ],
-  })
   try {
-    const txt = response.content[0].type === 'text' ? response.content[0].text : '{}'
-    const cleaned = txt.replace(/```json\n?|\n?```/g, '').trim()
+    const content = await callAi({
+      task: 'COMPLIANCE',
+      maxTokens: 600,
+      system: 'You are a TTB compliance expert for US craft distilleries with DSP permits. Analyze the Federal Register article and determine: (1) Is it relevant to a craft DSP (Distilled Spirits Plant) operator? (2) If yes, provide a plain-language summary (2-3 sentences), any specific action required, the effective date if mentioned, and which permit types are affected. Return JSON only with shape: { "relevant": bool, "summary": string, "action_required": string|null, "effective_date": string|null, "affects_types": string[] }. Use permit types like "DSP", "Winery", "Brewery".',
+      prompt: `Title: ${article.title}\n\nAbstract: ${article.abstract || '(none)'}\n\nPublished: ${article.publication_date}`,
+    })
+
+    const cleaned = content.replace(/```json\n?|\n?```/g, '').trim()
     return JSON.parse(cleaned)
-  } catch {
+  } catch (error) {
+    console.error('Error in TTB alert classification:', error)
     return { relevant: false, summary: '', action_required: null, effective_date: null, affects_types: [] }
   }
 }

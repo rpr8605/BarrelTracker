@@ -9,9 +9,9 @@ import { LabelScanner } from '@/components/barrels/LabelScanner'
 import { createClient } from '@/lib/supabase'
 import { TTB_SPIRITS_TYPES, COOPERAGE_CODES, validateCooperage } from '@/lib/ttb'
 import type { ExtractedLabel } from '@/components/barrels/LabelScanner'
+import { MaterialPicker } from '@/components/barrels/MaterialPicker'
+import { useEffect } from 'react'
 
-const GRAIN_OPTIONS = ['Wheat', 'High Wheat', 'Corn', 'High Corn', 'Rye', 'High Rye', 'Malted Rye', 'Barley', 'Four Grain', 'Heirloom Corn']
-const FINISH_OPTIONS = ['None', 'Port Finish', 'Sherry Finish', 'Rum Finish', 'Wine Finish', 'Double Oaked', 'Toasted Finish']
 const SOURCE_OPTIONS = ['', 'MGP', 'Buffalo Trace', 'Heaven Hill', 'Willett', 'New Riff', 'Wild Turkey', 'Four Roses', 'Beam', 'Castle & Key', 'Limestone Branch', 'Wilderness Trail', 'Smooth Ambler']
 
 export default function NewBarrelPage() {
@@ -19,6 +19,7 @@ export default function NewBarrelPage() {
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [distilleryId, setDistilleryId] = useState<string | null>(null)
 
   const [form, setForm] = useState({
     barrel_number: '',
@@ -34,9 +35,21 @@ export default function NewBarrelPage() {
     warehouse_row: '',
     warehouse_slot: '',
     warehouse_tier: '',
-    finish_type: 'None',
+    finish_type: 'none',
     notes: '',
   })
+
+  useEffect(() => {
+    async function init() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const id = await getDistilleryId(supabase, user.id)
+        setDistilleryId(id)
+      }
+    }
+    init()
+  }, [])
 
   function set(k: string, v: unknown) {
     setForm((f) => ({ ...f, [k]: v }))
@@ -174,21 +187,34 @@ export default function NewBarrelPage() {
 
         {step === 2 && (
           <div className="space-y-4">
-            <h2 className="font-medium">Grain type</h2>
-            <p className="text-sm text-[var(--color-text-muted)]">Select all that apply</p>
-            <div className="flex flex-wrap gap-2">
-              {GRAIN_OPTIONS.map((g) => (
-                <button
-                  key={g}
-                  onClick={() => toggleGrain(g)}
-                  className={`px-3 py-1.5 rounded-full text-sm transition-all min-h-[36px] ${
-                    form.grain_type.includes(g) ? 'bg-primary text-white' : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]'
-                  }`}
+            <div className="flex items-center justify-between">
+              <h2 className="font-medium">Grain & Mash Bill</h2>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => {
+                    set('grain_type', ['Malted Barley'])
+                    set('mash_bill', '100% Malted Barley')
+                  }}
+                  className="text-[10px] font-bold uppercase tracking-wider text-primary border border-primary/20 rounded px-2 py-1 hover:bg-primary/5 transition-colors"
                 >
-                  {g}
+                  ASM Preset
                 </button>
-              ))}
+              </div>
             </div>
+            <p className="text-sm text-[var(--color-text-muted)]">Select grains used in this barrel.</p>
+            <MaterialPicker 
+              category="grain" 
+              selected={form.grain_type} 
+              onChange={(val) => set('grain_type', val)} 
+              distilleryId={distilleryId}
+              multi
+            />
+            <Input 
+              label="Precise Mash Bill" 
+              value={form.mash_bill} 
+              onChange={(e) => set('mash_bill', e.target.value)} 
+              placeholder="e.g. 75% Corn, 21% Rye, 4% Malt" 
+            />
           </div>
         )}
 
@@ -250,19 +276,13 @@ export default function NewBarrelPage() {
         {step === 5 && (
           <div className="space-y-4">
             <h2 className="font-medium">Finish type</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {FINISH_OPTIONS.map((f) => (
-                <button
-                  key={f}
-                  onClick={() => set('finish_type', f)}
-                  className={`px-3 py-2 rounded-lg text-sm text-left transition-all min-h-[44px] ${
-                    form.finish_type === f ? 'bg-primary text-white' : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]'
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
+            <p className="text-sm text-[var(--color-text-muted)]">Select a finishing cask or material.</p>
+            <MaterialPicker 
+              category="finish" 
+              selected={form.finish_type} 
+              onChange={(val) => set('finish_type', val)} 
+              distilleryId={distilleryId}
+            />
             <Input label="Notes (optional)" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Any initial observations..." />
           </div>
         )}

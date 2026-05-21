@@ -270,6 +270,14 @@ export function BarrelDetailClient({ barrel: initial, notes: initialNotes }: { b
               <Button variant="secondary" size="sm" onClick={() => setShowQR(!showQR)}>
                 {showQR ? 'Hide QR' : 'Show QR code'}
               </Button>
+              <Link href={`/compliance?search=${barrel.barrel_number}`} className="block">
+                <Button variant="secondary" size="sm" className="w-full">Compliance view</Button>
+              </Link>
+              {barrel.public_token && (
+                <Link href={`/barrel/${barrel.public_token}`} target="_blank" className="block">
+                  <Button variant="secondary" size="sm" className="w-full">Public story ↗</Button>
+                </Link>
+              )}
               {canWrite && (
                 <Button variant="secondary" size="sm" onClick={() => setShowScanner(!showScanner)} className="col-span-2">
                   {showScanner ? 'Cancel scan' : 'Scan barrel label'}

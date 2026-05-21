@@ -100,13 +100,13 @@ create policy "writers_update_env" on environmental_logs for update
 create policy "writers_delete_env" on environmental_logs for delete
   using (distillery_id in (select distilleries_i_can_write()));
 
--- TTB REPORTS
-drop policy if exists "distillery_owner_all" on ttb_reports;
-create policy "members_read_ttb" on ttb_reports for select
+-- TTB REPORT PERIODS
+drop policy if exists "distillery_owner_all" on ttb_report_periods;
+create policy "members_read_ttb" on ttb_report_periods for select
   using (distillery_id in (select distilleries_i_can_access()));
-create policy "writers_insert_ttb" on ttb_reports for insert
+create policy "writers_insert_ttb" on ttb_report_periods for insert
   with check (distillery_id in (select distilleries_i_can_write()));
-create policy "writers_update_ttb" on ttb_reports for update
+create policy "writers_update_ttb" on ttb_report_periods for update
   using (distillery_id in (select distilleries_i_can_write()));
-create policy "writers_delete_ttb" on ttb_reports for delete
+create policy "writers_delete_ttb" on ttb_report_periods for delete
   using (distillery_id in (select distilleries_i_can_write()));

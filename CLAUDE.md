@@ -100,11 +100,7 @@ Build the full Still app including:
 
 ## Known bugs to fix before shipping
 
-- gauge amend endpoint (app/api/compliance/gauge/[id]/amend/route.ts): inserts employee_name and attested_by — correct columns are gauge_officer and created_by
-- calcProofGallons in lib/ttb.ts rounds to 3 decimal places, not 4 — change `* 1000 / 1000` to `* 10000 / 10000`
-- compliance/inventory POST: total_wine_gallons hardcoded 0 — compute from inventory_data items
-- compliance/generate route: writes to ttb_reports table that does not exist in migrations — create migration or redirect to ttb_report_periods
-- ttb_report_periods RLS: add user_roles check alongside owner_id check
+- none
 
 ## What NOT to build yet
 

@@ -1,3 +1,5 @@
+import { monthlyReportDueDate } from './ttb/business-days'
+
 // ─── Spirit types ─────────────────────────────────────────────────────────────
 export const TTB_SPIRITS_TYPES = [
   { value: 'bourbon', label: 'Bourbon Whiskey' },
@@ -112,18 +114,22 @@ export function spiritsLabel(v: string): string {
 }
 
 // ─── Filing deadline helpers ──────────────────────────────────────────────────
-/** Returns YYYY-MM-DD of the 15th of the month following a given period date */
+/** Returns YYYY-MM-DD of the 15th of the month following a given period date.
+ * @deprecated Use monthlyReportDueDate from lib/ttb/business-days.ts for business-day adjustments.
+ */
 export function monthlyReportDue(periodDate: Date): Date {
-  return new Date(periodDate.getFullYear(), periodDate.getMonth() + 1, 15)
+  return monthlyReportDueDate(periodDate.getFullYear(), periodDate.getMonth() + 1)
 }
 
-/** Returns true when we're past the 15th of the following month */
+/** Returns true when we're past the filing deadline for a given period month */
 export function isOverdue(periodDateStr: string): boolean {
-  return new Date() > monthlyReportDue(new Date(periodDateStr))
+  const d = new Date(periodDateStr)
+  return new Date() > monthlyReportDueDate(d.getFullYear(), d.getMonth() + 1)
 }
 
 /** Days until/since the filing deadline for a given period */
 export function daysUntilDue(periodDateStr: string): number {
-  const due = monthlyReportDue(new Date(periodDateStr))
+  const d = new Date(periodDateStr)
+  const due = monthlyReportDueDate(d.getFullYear(), d.getMonth() + 1)
   return Math.ceil((due.getTime() - Date.now()) / 86_400_000)
 }

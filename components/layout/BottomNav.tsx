@@ -7,8 +7,8 @@ const nav = [
   { href: '/dashboard', label: 'Home', icon: '⌂' },
   { href: '/barrels', label: 'Barrels', icon: '⬡' },
   { href: '/barrels/new', label: '', icon: '+' },
-  { href: '/search', label: 'Search', icon: '◎' },
-  { href: '/suggestions', label: 'AI', icon: '✦' },
+  { href: '/compliance', label: 'Compliance', icon: '✓' },
+  { href: '/more', label: 'More', icon: '☰' },
 ]
 
 export function BottomNav() {

@@ -29,6 +29,7 @@ export interface Barrel {
   predicted_peak_date: string | null
   profile_match_score: number | null
   batch_id: string | null
+  public_token: string | null
   latitude: number | null
   longitude: number | null
   location_accuracy_m: number | null
@@ -231,13 +232,33 @@ export interface TagLibraryEntry {
   usage_count: number
 }
 
+export interface MaterialLibraryEntry {
+  id: string
+  distillery_id: string | null
+  name: string
+  normalized_name: string
+  category: 'grain' | 'finish' | 'ingredient' | 'wood' | 'wine' | 'beer' | 'spirit' | 'syrup' | 'experimental' | 'other'
+  parent_group: string | null
+  notes: string | null
+  active: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface TtbReport {
   id: string
   distillery_id: string
   report_month: string
-  report_data: Record<string, unknown> | null
+  form_5110_40_values: Record<string, any> | null
+  form_5110_11_values: Record<string, any> | null
+  form_5110_28_values: Record<string, any> | null
+  form_5000_24_values: Record<string, any> | null
   status: 'draft' | 'filed'
-  generated_at: string
+  filed_at: string | null
+  confirmation_number: string | null
+  notes: string | null
+  created_at: string
 }
 
 export interface Bottle {
@@ -482,4 +503,336 @@ export interface AwardVote {
   nominee_id: string
   nominee_name: string
   voted_at: string
+}
+
+export interface RawMaterialLot {
+  id: string
+  distillery_id: string
+  material_name: string
+  source: string | null
+  lot_number: string | null
+  quantity: number
+  unit: string
+  cost: number | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface ProductionBatch {
+  id: string
+  distillery_id: string
+  batch_name: string
+  start_date: string | null
+  end_date: string | null
+  status: 'planned' | 'active' | 'completed' | 'cancelled' | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface FermentationBatch {
+  id: string
+  distillery_id: string
+  production_batch_id: string
+  yeast_type: string | null
+  gravity_og: number | null
+  gravity_fg: number | null
+  temp_log: Array<{ timestamp: string; temp_f: number }> | null
+  status: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface DistillationRun {
+  id: string
+  distillery_id: string
+  production_batch_id: string
+  still_id: string | null
+  run_number: string | null
+  start_time: string | null
+  end_time: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface DistillationCut {
+  id: string
+  distillery_id: string
+  run_id: string
+  cut_type: 'heads' | 'hearts' | 'tails' | null
+  volume_gallons: number | null
+  proof: number | null
+  destination_id: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface HoldingTank {
+  id: string
+  distillery_id: string
+  tank_name: string
+  capacity_gallons: number | null
+  current_volume_gallons: number
+  current_proof: number | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface BlendBatch {
+  id: string
+  distillery_id: string
+  blend_name: string
+  target_proof: number | null
+  target_volume_gallons: number | null
+  status: 'draft' | 'active' | 'bottled' | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface BlendBatchComponent {
+  id: string
+  distillery_id: string
+  blend_batch_id: string
+  source_type: 'barrel' | 'holding_tank' | null
+  source_id: string
+  volume_gallons: number
+  proof: number
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface ProofingAdjustment {
+  id: string
+  distillery_id: string
+  source_type: 'tank' | 'blend' | null
+  source_id: string
+  water_added_gallons: number
+  pre_proof: number | null
+  post_proof: number | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface BottlingRun {
+  id: string
+  distillery_id: string
+  blend_batch_id: string
+  bottling_date: string | null
+  bottle_size_ml: number | null
+  bottle_count: number | null
+  label_name: string | null
+  tasting_notes: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface FinishedGoodsLot {
+  id: string
+  distillery_id: string
+  bottling_run_id: string
+  sku: string | null
+  lot_number: string | null
+  quantity_cases: number | null
+  warehouse_location: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface FinishedGoodsMovement {
+  id: string
+  distillery_id: string
+  lot_id: string
+  movement_type: 'sale' | 'transfer' | 'adjustment' | null
+  quantity_cases: number
+  destination: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface NpdProject {
+  id: string
+  distillery_id: string
+  project_name: string
+  category: string | null
+  target_proof: number | null
+  status: 'concept' | 'pilot' | 'approved' | 'archived' | null
+  ai_brief: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface NpdVersion {
+  id: string
+  distillery_id: string
+  project_id: string
+  version_number: string
+  formula_notes: string | null
+  cost_estimate: number | null
+  sensory_notes: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface ConsultantReview {
+  id: string
+  distillery_id: string
+  target_type: string // ttb_report, formula, label, release
+  target_id: string
+  reviewer_id: string | null
+  status: 'pending' | 'approved' | 'needs_revision' | null
+  comments: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export interface AssetTag {
+  id: string
+  distillery_id: string
+  public_slug: string
+  tag_url: string
+  tag_type: 'qr' | 'nfc' | 'uhf' | 'hybrid'
+  nfc_uid: string | null
+  uhf_epc: string | null
+  assigned_entity_type: 'product' | 'batch' | 'barrel' | 'bottle' | 'case' | 'pallet' | 'compliance_record' | 'other'
+  assigned_entity_id: string | null
+  status: 'draft' | 'printed' | 'written' | 'verified' | 'active' | 'retired' | 'lost' | 'damaged'
+  public_enabled: boolean
+  regulator_view_enabled: boolean
+  internal_required: boolean
+  printed_label_template_id: string | null
+  written_at: string | null
+  written_by: string | null
+  verified_at: string | null
+  verified_by: string | null
+  last_scanned_at: string | null
+  scan_count: number
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TagScanEvent {
+  id: string
+  asset_tag_id: string
+  scanned_at: string
+  scan_source: 'qr' | 'nfc' | 'uhf' | 'manual' | null
+  viewer_type: 'public' | 'internal' | 'distributor' | 'regulator' | 'unknown' | null
+  user_id: string | null
+  ip_address: string | null
+  user_agent: string | null
+  referrer: string | null
+  location_hint: string | null
+  action_taken: string | null
+  metadata: Record<string, any> | null
+}
+
+export interface ComplianceDocument {
+  id: string
+  distillery_id: string
+  entity_type: 'product' | 'batch' | 'barrel' | 'bottle' | 'case' | 'pallet'
+  entity_id: string
+  document_type: 'ttb_cola' | 'state_registration' | 'label_image' | 'formula' | 'distributor_agreement' | 'sell_sheet' | 'price_sheet' | 'abc_correspondence' | 'other'
+  title: string
+  file_url: string | null
+  external_url: string | null
+  state: string | null
+  document_number: string | null
+  status: string | null
+  uploaded_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ColaRecord {
+  id: string
+  distillery_id: string
+  entity_type: string
+  entity_id: string
+  ttb_cola_number: string | null
+  ttb_cola_registry_url: string | null
+  status: string | null
+  approval_date: string | null
+  brand_name: string | null
+  class_type: string | null
+  label_version: string | null
+  last_verified_at: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface StateRegistration {
+  id: string
+  distillery_id: string
+  entity_type: string
+  entity_id: string
+  state: string
+  agency_name: string | null
+  registration_number: string | null
+  status: 'not_started' | 'submitted' | 'approved' | 'rejected' | 'renewal_due' | 'expired' | null
+  submitted_at: string | null
+  approved_at: string | null
+  expires_at: string | null
+  renewal_due_at: string | null
+  fee_status: string | null
+  distributor_required: boolean | null
+  distributor_name: string | null
+  wholesaler_assignment: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ControlStateCode {
+  id: string
+  distillery_id: string
+  entity_type: string
+  entity_id: string
+  nabca_code: string | null
+  state: string | null
+  state_item_code: string | null
+  size_ml: number | null
+  pack_size: string | null
+  status: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface LabelTemplate {
+  id: string
+  distillery_id: string
+  name: string
+  template_type: 'barrel' | 'product' | 'batch' | 'case' | 'bottle' | 'pallet'
+  description: string | null
+  dimensions_json: Record<string, any> | null
+  fields_json: Record<string, any> | null
+  is_default: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TagAuditEvent {
+  id: string
+  asset_tag_id: string
+  event_type: string
+  actor_id: string | null
+  message: string | null
+  metadata: Record<string, any> | null
+  created_at: string
 }

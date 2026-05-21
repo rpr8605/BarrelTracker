@@ -134,18 +134,25 @@ create policy "public_read" on tag_library for select using (true);
 create policy "auth_insert" on tag_library for insert with check (auth.uid() is not null);
 create policy "auth_update" on tag_library for update using (auth.uid() is not null);
 
--- TTB REPORTS
-create table if not exists ttb_reports (
-  id uuid primary key default uuid_generate_v4(),
-  distillery_id uuid references distilleries(id) on delete cascade,
-  report_month date,
-  report_data jsonb,
-  status text default 'draft' check (status in ('draft','filed')),
-  generated_at timestamptz default now()
+-- TTB REPORT PERIODS
+create table if not exists ttb_report_periods (
+  id uuid primary key default gen_random_uuid(),
+  distillery_id uuid not null references distilleries(id) on delete cascade,
+  report_month date not null,
+  form_5110_40_values jsonb,
+  form_5110_11_values jsonb,
+  form_5110_28_values jsonb,
+  form_5000_24_values jsonb,
+  status text not null default 'draft' check (status in ('draft','filed')),
+  filed_at timestamptz,
+  confirmation_number text,
+  notes text,
+  created_at timestamptz default now(),
+  unique(distillery_id, report_month)
 );
 
-alter table ttb_reports enable row level security;
-create policy "distillery_owner_all" on ttb_reports for all
+alter table ttb_report_periods enable row level security;
+create policy "distillery_owner_all" on ttb_report_periods for all
   using (distillery_id in (select id from distilleries where owner_id = auth.uid()));
 
 -- Auto-update barrels.updated_at

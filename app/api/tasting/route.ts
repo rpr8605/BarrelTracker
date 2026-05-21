@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, createServiceClient, getActiveDistilleryId } from '@/lib/supabase-server'
-import { anthropic, HAIKU } from '@/lib/anthropic'
+import { callAi } from '@/lib/ai-router'
 
 interface SensoryExtraction {
   nose: string[]
@@ -12,24 +12,18 @@ interface SensoryExtraction {
 }
 
 async function extractFromTranscript(transcript: string): Promise<SensoryExtraction> {
-  const response = await anthropic.messages.create({
-    model: HAIKU,
-    max_tokens: 600,
-    system: [
-      {
-        type: 'text',
-        text:
-          'You are a master distiller analyzing tasting notes. Extract structured sensory data from the provided transcript. Return ONLY valid JSON in this exact shape: {"nose": ["descriptor1"], "palate": [...], "finish": [...], "overall_score": 0-100 or null, "color_description": "string or null", "abv_estimate": number or null}. Use industry-standard whiskey flavor descriptors (vanilla, caramel, oak, dried fruit, spice, floral, smoke, etc.). Return empty arrays / nulls if not present.',
-        cache_control: { type: 'ephemeral' },
-      },
-    ],
-    messages: [{ role: 'user', content: transcript }],
-  })
   try {
-    const txt = response.content[0].type === 'text' ? response.content[0].text : '{}'
-    const cleaned = txt.replace(/```json\n?|\n?```/g, '').trim()
+    const content = await callAi({
+      task: 'EXTRACTION',
+      maxTokens: 600,
+      system: 'You are a master distiller analyzing tasting notes. Extract structured sensory data from the provided transcript. Return ONLY valid JSON in this exact shape: {"nose": ["descriptor1"], "palate": [...], "finish": [...], "overall_score": 0-100 or null, "color_description": "string or null", "abv_estimate": number or null}. Use industry-standard whiskey flavor descriptors (vanilla, caramel, oak, dried fruit, spice, floral, smoke, etc.). Return empty arrays / nulls if not present.',
+      prompt: transcript,
+    })
+
+    const cleaned = content.replace(/```json\n?|\n?```/g, '').trim()
     return JSON.parse(cleaned)
-  } catch {
+  } catch (error) {
+    console.error('Error in sensory extraction:', error)
     return { nose: [], palate: [], finish: [], overall_score: null, color_description: null, abv_estimate: null }
   }
 }

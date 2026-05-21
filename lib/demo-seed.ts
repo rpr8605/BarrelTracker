@@ -92,9 +92,8 @@ export async function seedDemoData(db: SupabaseClient): Promise<{ existing: bool
   const barrelInserts: BarrelInsert[] = []
 
   const rickhouses = [
-    { row: 'A', count: 12, minAge: 2, maxAge: 8 },
-    { row: 'B', count: 18, minAge: 1, maxAge: 12 },
-    { row: 'C', count: 17, minAge: 3, maxAge: 6 },
+    { row: 'A', count: 4, minAge: 2, maxAge: 8 },
+    { row: 'B', count: 4, minAge: 1, maxAge: 12 },
   ]
 
   let barrelNum = 1
@@ -139,7 +138,7 @@ export async function seedDemoData(db: SupabaseClient): Promise<{ existing: bool
   const { data: barrels, error: bErr } = await db
     .from('barrels')
     .insert(barrelInserts)
-    .select('id, barrel_number, status')
+    .select('id, barrel_number, status, mash_bill, distillery_id')
 
   if (bErr || !barrels) throw new Error(`Failed to create demo barrels: ${bErr?.message}`)
 
@@ -147,6 +146,105 @@ export async function seedDemoData(db: SupabaseClient): Promise<{ existing: bool
   const barrel8 = barrels.find((b) => b.barrel_number === '0008')
   const barrel23 = barrels.find((b) => b.barrel_number === '0023')
   const barrel41 = barrels.find((b) => b.barrel_number === '0041')
+
+  // SPECIFIC FIX: Ensure Barrel #0008 has the requested data
+  if (barrel8) {
+    const { data: b0008Batch } = await db
+      .from('batches')
+      .insert({
+        distillery_id: dId,
+        batch_number: 'B-0008',
+        barrel_ids: [barrel8.id],
+        story_content: 'Barrel #0008: Single Barrel Rye. This barrel is tracked through Still from fill to final record. Its Smart Tag connects the physical barrel to a live digital record containing production details, compliance documents, scan history, and public/trade views.',
+        story_page_public: true,
+        story_page_slug: 'barrel-0008',
+      })
+      .select()
+      .single()
+
+    await db.from('barrels').update({
+      mash_bill: '95% Rye, 5% Malted Barley',
+      entry_proof: 114,
+      warehouse_row: 'A',
+      warehouse_slot: 4,
+      warehouse_tier: 2,
+      notes: 'High rye mash bill. Target: Single Barrel Rye release. Aging in Rickhouse A.',
+      public_token: 'BRL-0008-DEMO',
+      batch_id: b0008Batch?.id,
+    }).eq('id', barrel8.id)
+
+    // Add voice notes for Barrel #0008
+    await db.from('voice_notes').insert([
+      {
+        barrel_id: barrel8.id,
+        distillery_id: dId,
+        transcript: 'Initial fill record created for demo barrel #0008. 95/5 Rye mash bill.',
+        ai_extracted_tags: ['rye', 'fill'],
+        duration_seconds: 12,
+        recorded_at: daysAgo(365),
+      },
+      {
+        barrel_id: barrel8.id,
+        distillery_id: dId,
+        transcript: 'Sample pulled for sensory review. Light spice, oak, caramel, and rye heat developing.',
+        ai_extracted_tags: ['spice', 'oak', 'caramel', 'rye heat'],
+        duration_seconds: 18,
+        recorded_at: daysAgo(90),
+      },
+      {
+        barrel_id: barrel8.id,
+        distillery_id: dId,
+        transcript: 'Compliance packet pending state registration verification. Smart Tag assigned for QR/NFC demonstration.',
+        ai_extracted_tags: ['compliance', 'smart tag'],
+        duration_seconds: 15,
+        recorded_at: daysAgo(10),
+      }
+    ])
+  }
+
+  // Nancy's Requested Demo Barrels
+  const extraBarrels = [
+    {
+      distillery_id: dId,
+      barrel_number: 'ASM-001',
+      mash_bill: '100% Malted Barley',
+      grain_type: ['Malted Barley'],
+      entry_date: daysAgo(400),
+      entry_proof: 110,
+      warehouse_row: 'B',
+      warehouse_slot: 1,
+      warehouse_tier: 1,
+      notes: 'Demo malt whiskey support for ASM producers.',
+      status: 'aging',
+      public_token: 'ASM-001-DEMO',
+    },
+    {
+      distillery_id: dId,
+      barrel_number: 'FIN-001',
+      mash_bill: '75% Corn, 21% Rye, 4% Malt',
+      grain_type: ['Corn', 'Rye', 'Malt'],
+      entry_date: daysAgo(730),
+      entry_proof: 115,
+      warehouse_row: 'A',
+      warehouse_slot: 40,
+      warehouse_tier: 3,
+      finish_type: 'Amburana',
+      notes: 'Demonstrates Stills flexible finishing library.',
+      status: 'ready',
+      public_token: 'FIN-001-DEMO',
+    }
+  ]
+  await db.from('barrels').insert(extraBarrels)
+
+  // Seed "Mustard" as a custom finish for the demo distillery
+  await db.from('material_library').insert({
+    distillery_id: dId,
+    name: 'Mustard',
+    normalized_name: 'mustard',
+    category: 'finish',
+    parent_group: 'Custom',
+    notes: 'Nancy requested a weird one.'
+  })
 
   const sponsorInserts = []
   if (barrel23) {
@@ -211,6 +309,119 @@ export async function seedDemoData(db: SupabaseClient): Promise<{ existing: bool
   // Insert QR events in batches of 50
   for (let i = 0; i < qrEvents.length; i += 50) {
     await db.from('barrel_qr_events').insert(qrEvents.slice(i, i + 50))
+  }
+
+  // --- NEW PLATFORM UPGRADE SEED DATA ---
+
+  // 1. NPD Projects (2 pilot projects)
+  const { data: npdProjects, error: npdErr } = await db
+    .from('npd_projects')
+    .insert([
+      {
+        distillery_id: dId,
+        project_name: 'Project Honeycomb',
+        category: 'Finished Bourbon',
+        target_proof: 112,
+        status: 'pilot',
+        ai_brief: 'A honey-finished bourbon aimed at the premium gift market.',
+        created_by: demoOwnerId,
+      },
+      {
+        distillery_id: dId,
+        project_name: 'Midnight Rye',
+        category: 'Rye Whiskey',
+        target_proof: 100,
+        status: 'concept',
+        ai_brief: 'Dark, chocolatey rye whiskey using heavy char barrels.',
+        created_by: demoOwnerId,
+      }
+    ])
+    .select()
+
+  if (npdErr || !npdProjects) throw new Error(`Failed to create NPD projects: ${npdErr?.message}`)
+
+  // 2. Bottle Economics Scenario (in NPD Versions)
+  await db.from('npd_versions').insert([
+    {
+      distillery_id: dId,
+      project_id: npdProjects[0].id,
+      version_number: 'v1.0',
+      formula_notes: 'Honey finish for 3 months in toasted barrels.',
+      cost_estimate: 42.50, // "1 bottle economics scenario"
+      sensory_notes: 'Strong floral notes, balanced sweetness.',
+      created_by: demoOwnerId,
+    }
+  ])
+
+  // 3. Blend Batch (1 blend batch)
+  const blendBarrels = barrels.slice(0, 4) // Use first 4 barrels
+  const { data: blendBatch, error: blendErr } = await db
+    .from('blend_batches')
+    .insert({
+      distillery_id: dId,
+      blend_name: 'Founder\'s Reserve 2026',
+      target_proof: 108,
+      target_volume_gallons: 200,
+      status: 'active',
+      created_by: demoOwnerId,
+    })
+    .select()
+    .single()
+
+  if (blendErr || !blendBatch) throw new Error(`Failed to create blend batch: ${blendErr?.message}`)
+
+  // 4. Blend Batch Components
+  const componentInserts = blendBarrels.map(b => ({
+    distillery_id: dId,
+    blend_batch_id: blendBatch.id,
+    source_type: 'barrel',
+    source_id: b.id,
+    volume_gallons: 50,
+    proof: 115,
+    created_by: demoOwnerId,
+  }))
+  await db.from('blend_batch_components').insert(componentInserts)
+
+  // 5. Planned Release (Bottling Run)
+  const { data: bottlingRun, error: bottleErr } = await db
+    .from('bottling_runs')
+    .insert({
+      distillery_id: dId,
+      blend_batch_id: blendBatch.id,
+      bottling_date: daysAgo(-30), // Planned in future
+      bottle_size_ml: 750,
+      bottle_count: 1000,
+      label_name: 'Founder\'s Reserve Batch #1',
+      created_by: demoOwnerId,
+    })
+    .select()
+    .single()
+
+  if (bottleErr || !bottlingRun) throw new Error(`Failed to create bottling run: ${bottleErr?.message}`)
+
+  // 6. Audit Readiness Report (Consultant Review on a TTB Report)
+  // First create a TTB report to review
+  const { data: ttbReport } = await db
+    .from('ttb_report_periods')
+    .insert({
+      distillery_id: dId,
+      report_month: daysAgo(30),
+      form_5110_40_values: { total_produced: 5000, total_withdrawn: 4200 },
+      status: 'draft',
+    })
+    .select()
+    .single()
+
+  if (ttbReport) {
+    await db.from('consultant_reviews').insert({
+      distillery_id: dId,
+      target_type: 'ttb_report',
+      target_id: ttbReport.id,
+      reviewer_id: demoOwnerId, // In real life would be a consultant
+      status: 'approved',
+      comments: 'Audit readiness report: All records match production logs. Ready for filing.',
+      created_by: demoOwnerId,
+    })
   }
 
   return { existing: false }

@@ -3,17 +3,16 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { createServerSupabaseClient, createServiceClient, getActiveDistilleryId } from '@/lib/supabase-server'
 import { sumLogs } from '@/lib/sustainability'
 import { uploadToR2 } from '@/lib/r2'
-import { anthropic, HAIKU } from '@/lib/anthropic'
+import { callAi } from '@/lib/ai-router'
 
 async function narrative(name: string, year: number, summary: ReturnType<typeof sumLogs>, prevSummary: ReturnType<typeof sumLogs> | null) {
   try {
-    const r = await anthropic.messages.create({
-      model: HAIKU,
-      max_tokens: 250,
-      system: [{ type: 'text', text: 'Write a short 3-sentence sustainability narrative for a craft distillery annual report. Plain language, factual, no emojis. End on tone of forward-looking improvement.', cache_control: { type: 'ephemeral' } }],
-      messages: [{ role: 'user', content: `Distillery: ${name}\nYear: ${year}\nWater: ${summary.water_gallons.toFixed(0)} gal\nEnergy: ${summary.energy_kwh.toFixed(0)} kWh\nCO2e: ${summary.co2e_metric_tons.toFixed(2)} metric tons\nLocal grain: ${summary.pct_local.toFixed(0)}%${prevSummary ? `\nPrior year CO2e: ${prevSummary.co2e_metric_tons.toFixed(2)} metric tons` : ''}` }],
+    return await callAi({
+      task: 'CREATIVE',
+      maxTokens: 250,
+      system: 'Write a short 3-sentence sustainability narrative for a craft distillery annual report. Plain language, factual, no emojis. End on tone of forward-looking improvement.',
+      prompt: `Distillery: ${name}\nYear: ${year}\nWater: ${summary.water_gallons.toFixed(0)} gal\nEnergy: ${summary.energy_kwh.toFixed(0)} kWh\nCO2e: ${summary.co2e_metric_tons.toFixed(2)} metric tons\nLocal grain: ${summary.pct_local.toFixed(0)}%${prevSummary ? `\nPrior year CO2e: ${prevSummary.co2e_metric_tons.toFixed(2)} metric tons` : ''}`,
     })
-    return r.content[0].type === 'text' ? r.content[0].text : ''
   } catch {
     return ''
   }

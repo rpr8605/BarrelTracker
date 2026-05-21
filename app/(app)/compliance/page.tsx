@@ -74,7 +74,7 @@ export default function CompliancePage() {
       fetch(`/api/compliance/production?distillery_id=${id}`).then((r) => r.json()),
       fetch(`/api/compliance/processing?distillery_id=${id}`).then((r) => r.json()),
       fetch(`/api/compliance/inventory?distillery_id=${id}`).then((r) => r.json()),
-      createClient().from('ttb_reports').select('*').eq('distillery_id', id).order('report_month', { ascending: false }).then(({ data }) => data ?? []),
+      createClient().from('ttb_report_periods').select('*').eq('distillery_id', id).order('report_month', { ascending: false }).then(({ data }) => data ?? []),
       fetch(`/api/compliance/import-history?distillery_id=${id}`).then((r) => r.json()),
     ])
     if ((histRes?.count ?? 0) === 0) setShowImportBanner(true)

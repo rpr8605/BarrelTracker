@@ -38,8 +38,58 @@ export default async function DashboardPage() {
     })
     .slice(0, 6)
 
+  const barrel8 = allBarrels.find(b => b.barrel_number === '0008')
+
   return (
     <div className="space-y-6" data-tour="dashboard-overview">
+      <div className="flex items-center gap-3">
+        <Link href="/search" className="flex-1">
+          <div className="bg-muted/50 rounded-lg py-2 px-4 flex items-center gap-2 text-sm text-[var(--color-text-muted)] border border-transparent hover:border-primary/30 transition-all">
+            <span>🔍</span>
+            <span>Search barrels, batches, or logs...</span>
+          </div>
+        </Link>
+      </div>
+
+      <div className="bg-primary/10 p-4 rounded-xl border border-primary/20">
+        <h2 className="text-sm font-bold text-primary uppercase tracking-widest mb-3 italic">Demo Quick Start</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Link href={barrel8 ? `/barrels/${barrel8.id}` : '/barrels?search=0008'}>
+            <Card className="p-3 hover:border-primary transition-all cursor-pointer group h-full">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">⬡</span>
+                <p className="font-bold text-sm group-hover:text-primary">View Barrel #0008</p>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                See voice notes, sample history, and AI tasting predictions for this demo barrel.
+              </p>
+            </Card>
+          </Link>
+          <Link href="/compliance">
+            <Card className="p-3 hover:border-primary transition-all cursor-pointer group h-full">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">✓</span>
+                <p className="font-bold text-sm group-hover:text-primary">Compliance Center</p>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                Automated TTB reporting, gauge logs, and excise tax liability tracking.
+              </p>
+            </Card>
+          </Link>
+          <Link href={barrel8 ? `/barrel/${barrel8.public_token}` : '/batches'}>
+            <Card className="p-3 hover:border-primary transition-all cursor-pointer group h-full">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">✦</span>
+                <p className="font-bold text-sm group-hover:text-primary">Preview Story Mode</p>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                Turn production data into a compelling consumer narrative with AI.
+              </p>
+            </Card>
+          </Link>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <div className="text-2xl font-medium text-[var(--color-text)]">{allBarrels.length}</div>
