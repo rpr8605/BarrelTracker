@@ -836,3 +836,84 @@ export interface TagAuditEvent {
   metadata: Record<string, any> | null
   created_at: string
 }
+
+export interface ActionCenterItem {
+  id: string
+  distillery_id: string
+  module: string
+  entity_type: string | null
+  entity_id: string | null
+  title: string
+  description: string | null
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info'
+  status: 'detected' | 'assigned' | 'in_progress' | 'resolved' | 'dismissed'
+  assigned_to: string | null
+  due_at: string | null
+  created_at: string
+  resolved_at: string | null
+  auto_resolution_rule: any
+  recommended_actions: any
+}
+
+export interface ReportSnapshot {
+  id: string
+  distillery_id: string
+  report_type: string
+  generated_at: string
+  time_window: string | null
+  metrics_json: any
+  summary: string | null
+  good_changes: any
+  warnings: any
+  blockers: any
+  recommended_actions: any
+}
+
+export interface SavedBarrelView {
+  id: string
+  distillery_id: string
+  name: string
+  filter_json: any
+  sort_json: any
+  group_by: string | null
+  is_pinned: boolean
+  created_by: string | null
+  created_at: string
+}
+
+export interface CustomBarrelList {
+  id: string
+  distillery_id: string
+  name: string
+  description: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface CustomBarrelListItem {
+  id: string
+  list_id: string
+  barrel_id: string
+  notes: string | null
+  added_at: string
+}
+
+export interface MarketingCampaign {
+  id: string
+  distillery_id: string
+  name: string
+  status: 'draft' | 'active' | 'archived'
+  goals: string | null
+  metrics_json: any
+  created_at: string
+  updated_at: string
+}
+
+export interface NotificationRule {
+  id: string
+  distillery_id: string
+  event_type: string
+  channels: string[]
+  severity_threshold: string | null
+  is_active: boolean
+}
