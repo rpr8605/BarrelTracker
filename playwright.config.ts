@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'https://barrel-tracker.vercel.app'
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000'
 
 export default defineConfig({
   testDir: './tests',
@@ -11,6 +11,14 @@ export default defineConfig({
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['list'],
   ],
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://127.0.0.1:3000/login',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  },
   use: {
     baseURL: BASE_URL,
     screenshot: 'only-on-failure',
